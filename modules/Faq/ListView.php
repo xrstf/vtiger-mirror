@@ -130,22 +130,26 @@ $other_text ['del'] = $app_strings[LBL_MASS_DELETE];
 //Retreive the list from Database
 //<<<<<<<<<customview>>>>>>>>>
 global $current_user;
-$queryGenerator = new QueryGenerator($currentModule, $current_user);
 if ($viewid != "0") {
-	$queryGenerator->initForCustomViewById($viewid);
+	$queryGenerator = new QueryGenerator($currentModule, $current_user);
+	$list_query = $queryGenerator->getCustomViewQueryById($viewid);
 } else {
-	$queryGenerator->initForDefaultCustomView();
+	$list_query = $queryGenerator->getDefaultCustomViewQuery();
 }
 
 if(isset($_REQUEST['query']) && $_REQUEST['query'] == 'true')
 {
-	$queryGenerator->addUserSearchConditions($_REQUEST);
-	$ustring = getSearchURL($_REQUEST);
+	list($where, $ustring) = split("#@@#",getWhereCondition($currentModule));
 	// we have a query
 	$url_string .="&query=true".$ustring;
+	$log->info("Here is the where clause for the list view: $where");
 	$smarty->assign("SEARCH_URL",$url_string);
 }
-$list_query = $queryGenerator->getQuery();
+if(isset($where) && $where != '')
+{
+	$list_query .= ' and '.$where;
+}
+
 
 $view_script = "<script language='javascript'>
 function set_selected()
@@ -219,7 +223,7 @@ $listview_header = $controller->getListViewHeader($focus,$currentModule,$url_str
 		$order_by);
 $smarty->assign("LISTHEADER", $listview_header);
 
-$listview_header_search = $controller->getBasicSearchFieldInfoList();
+$listview_header_search = getSearchListHeaderValues($focus,"Faq",$url_string,$sorder,$order_by,"",$oCustomView);
 $smarty->assign("SEARCHLISTHEADER",$listview_header_search);
 
 $listview_entries = $controller->getListViewEntries($focus,$currentModule,$list_result,
@@ -235,7 +239,7 @@ $smarty->assign("CURRENT_PAGE_BOXES", implode(array_keys($listview_entries),";")
 
 $navigationOutput = getTableHeaderSimpleNavigation($navigation_array, $url_string,"Faq","index",$viewid);
 $alphabetical = AlphabeticalSearch($currentModule,'index','question','true','basic',"","","","",$viewid);
-$fieldnames = $controller->getAdvancedSearchOptionString();
+$fieldnames = getAdvSearchfields($module);
 $criteria = getcriteria_options();
 $smarty->assign("CRITERIA", $criteria);
 $smarty->assign("FIELDNAMES", $fieldnames);

@@ -1889,12 +1889,7 @@ function getValue($field_result, $list_result,$fieldname,$focus,$module,$entity_
 	}
 	//added for asterisk integration
 	elseif($uitype == 11){
-		// Fix added for Trac Id: 6139
-		if(vtlib_isModuleActive('PBXManager')) {
-			$value = "<a href='javascript:;' onclick='startCall(&quot;$temp_val&quot;, &quot;$entity_id&quot;)'>".$temp_val."</a>";
-		} else {
-			$value = $temp_val;
-		}
+		$value = "<a href='javascript:;' onclick='startCall(&quot;$temp_val&quot;, &quot;$entity_id&quot;)'>".$temp_val."</a>";
 	}
 	//asterisk changes end here
 	//Added for email status tracking
@@ -3072,7 +3067,7 @@ function AlphabeticalSearch($module,$action,$fieldname,$query,$type,$popuptype='
 
 	for($var='A',$i =1;$i<=26;$i++,$var++)
 	// Mike Crowe Mod --------------------------------------------------------added groupid to url
-		$list .= '<td class="searchAlph" id="alpha_'.$i.'" align="center" onClick=\'alphabetic("'.$module.'","gname='.$groupid.'&query='.$query.'&search_field='.$fieldname.'&searchtype=BasicSearch&operator=s&type=alpbt&search_text='.$var.$flag.$popuptypevalue.$returnvalue.$append_url.'","alpha_'.$i.'")\'>'.$var.'</td>';
+		$list .= '<td class="searchAlph" id="alpha_'.$i.'" align="center" onClick=\'alphabetic("'.$module.'","gname='.$groupid.'&query='.$query.'&search_field='.$fieldname.'&searchtype=BasicSearch&type=alpbt&search_text='.$var.$flag.$popuptypevalue.$returnvalue.$append_url.'","alpha_'.$i.'")\'>'.$var.'</td>';
 
 	$log->debug("Exiting AlphabeticalSearch method ...");
 	return $list;

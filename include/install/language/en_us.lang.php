@@ -16,8 +16,7 @@ $optionalModuleStrings = array(
 	'Webforms_description'=>'Server side support to allow building client webforms to capture the information easily',
 	'SMSNotifier_description'=>'Sends sms messages to Accounts, contacts and Leads',
 	'Assets_description'=>'Assets represent ownership of value that can be converted into cash',
-	'ModComments_description' => 'Ability to add comments to any of the related modules',
-	'Projects_description' => 'Adds the ability to manage Projects',
+	'ModComments_description' => 'Ability to add comments to any of the related modules'
 );
 
 $installationStrings = array(
@@ -67,7 +66,7 @@ $installationStrings = array(
 	'LBL_NOT_RECOMMENDED' => 'Not Recommended',
 	'LBL_PHP_DIRECTIVES_HAVE_RECOMMENDED_VALUES' => 'Your PHP directives have the Recommended values',
 	'MSG_PROVIDE_READ_WRITE_ACCESS_TO_PROCEED' => 'Provide Read/Write access to the files and directories listed to Proceed',
-	'WARNING_PHP_DIRECTIVES_NOT_RECOMMENDED_STILL_WANT_TO_PROCEED' => 'Some of the PHP Settings do not meet the recommended values. This might affect some of the features of vtiger CRM. Are you sure, you want to proceed?',
+	'WARNING_PHP_DIRECTIVES_NOT_RECOMMENDED_STILL_WANT_TO_PROCEED' => 'Few of the PHP Setting does not meeting recommended values. This might affect some of the features of vtiger CRM. Are you sure, you want to proceed?',
 	'LBL_CHANGE' => 'Change',
 	'LBL_DATABASE_INFORMATION' => 'Database Information',
 	'LBL_CRM_CONFIGURATION' => 'CRM Configuration',
@@ -144,7 +143,7 @@ $installationStrings = array(
 	'MSG_CREATE_DB_WITH_UTF8_SUPPORT' => 'Create the database first with UTF8 charset support',
 	'LBL_EG' => 'eg',
 	'MSG_COPY_DATA_FROM_OLD_DB' => '<b>Copy the data (dump)</b> from earlier database into this new one',
-	'LBL_SELECT_PREVIOUS_INSTALLATION_VERSION' => 'Please Select Previous Installation Version',
+	'LBL_SELECT_PREVIOUS_INSTALLATION_VERSION' => 'Please Select Previous Insallation Version',
 	'LBL_SOURCE_CONFIGURATION' => 'Source Configuration',
 	'LBL_OLD' => 'Old',
 	'LBL_NEW' => 'New',
@@ -176,7 +175,7 @@ $installationStrings = array(
 	'LBL_FIX_NOW' => 'Fix Now',
 	'LBL_CLOSE' => 'Close',
 	'LBL_PRE_MIGRATION_TOOLS' => 'Pre-Migration Tools',
-	'ERR_TABLES_NOT_INNODB' => 'Your database table engine is not the recommended engine "Innodb"',
+	'ERR_TABLES_NOT_INNODB' => 'Your database table engine is not the recomended engine "Innodb"',
 	'MSG_CHANGE_ENGINE_BEFORE_MIGRATION' => 'Please make sure to change the engine before migration',
 	'LBL_VIEW_REPORT' => 'View Report',
 	'LBL_IMPORTANT' => 'Important',
@@ -202,7 +201,7 @@ $installationStrings = array(
 	'MSG_DATABASE_COPY_SUCCEDED' => 'Database copy was successfully created.<br />Click Next &#187; to proceed',
 	'MSG_SUCCESSFULLY_FIXED_TABLE_TYPES' => 'Successfully changed tables to InnoDB engine',
 	'LBL_MIGRATION' => 'Migration',
-	'LBL_SOURCE_VERSION_NOT_SET' => 'Source Version is not set. Please check vtigerversion.php and continue the Patch Process',
+	'LBL_SOURCE_VERSION_NOT_SET' => 'Source Version is not set. Please check vtigerversion.php and contiune the Patch Process',
 	'LBL_GOING_TO_APPLY_DB_CHANGES' => 'Going to apply the Database Changes',
 	'LBL_DATABASE_CHANGES' => 'Database changes',
 	'LBL_STARTS' => 'Starts',
@@ -214,7 +213,5 @@ $installationStrings = array(
 	'LBL_CURRENT_SOURCE_PATH_IS' => 'Your current source path is : ',
 	'LBL_DATABASE_EXTENSION' =>'Database Extension',
 	'LBL_DOCUMENTATION_LINK' => 'For more information, please refer <a href="http://wiki.vtiger.com" target="_blank">vtigerCRM Manual</a>',
-	'LBL_USER_PASSWORD_CHANGE_NOTE' => 'password of all users will be reset to user name. Kindly notify users and change passwords',
-	'LBL_PASSWORD_FIELD_CHANGE_FAILURE' => "changing user's password field failed"
 );
 ?>

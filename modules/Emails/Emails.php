@@ -148,10 +148,7 @@ var $rel_serel_table = "vtiger_seactivityrel";
 			{
 				if(isset($this->column_fields['parent_id']) && $this->column_fields['parent_id'] != '')
 				{
-					//$this->insertIntoEntityTable('vtiger_seactivityrel', $module);
-					$sql = 'insert into vtiger_seactivityrel values(?,?)';
-					$params = array($this->column_fields['parent_id'],$_REQUEST['currentid']);
-					$adb->pquery($sql,$params);
+					$this->insertIntoEntityTable('vtiger_seactivityrel', $module);
 				}
 				elseif($this->column_fields['parent_id']=='' && $insertion_mode=="edit")
 				{

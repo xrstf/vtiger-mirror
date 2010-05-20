@@ -122,13 +122,15 @@ function vtws_getId($objId, $elemId){
 	return $objId."x".$elemId;
 }
 
-function getEmailFieldId($meta, $entityId){
+function getEmailFieldId($meta, $entityId,$fields){
 	global $adb;
+	if(sizeof($fields)>0){
+		return $meta->getFieldIdFromFieldName($fields[0]);
+	}
 	//no email field accessible in the module. since its only association pick up the field any way.
 	$query="SELECT fieldid,fieldlabel,columnname FROM vtiger_field WHERE tabid=? 
 		and uitype=13 and presence in (0,2)";
-	$result = $adb->pquery($query, array($meta->getTabId()));
-	
+	$result = $adb->pquery($query, array($meta->getEntityId()));
 	//pick up the first field.
 	$fieldId = $adb->query_result($result,0,'fieldid');
 	return $fieldId;

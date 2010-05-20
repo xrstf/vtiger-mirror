@@ -57,7 +57,8 @@ class Installation_Utils {
 				$db_server_status = true;
 				$serverInfo = $conn->ServerInfo();
 				if(Common_Install_Wizard_Utils::isMySQL($db_type)) {
-					$mysql_server_version = Common_Install_Wizard_Utils::getMySQLVersion($serverInfo);
+					$version = explode('-',$serverInfo);
+					$mysql_server_version=$version[0];
 				}
 				if($create_db) {
 					// drop the current database if it exists
@@ -196,7 +197,8 @@ class Migration_Utils {
 				$db_server_status = true;
 				$serverInfo = $conn->ServerInfo();
 				if(Common_Install_Wizard_Utils::isMySQL($db_type)) {
-					$mysql_server_version = Common_Install_Wizard_Utils::getMySQLVersion($serverInfo);
+					$version = explode('-',$serverInfo);
+					$mysql_server_version=$version[0];
 				}
 		
 				// test the connection to the old database
@@ -204,29 +206,6 @@ class Migration_Utils {
 				if(@$olddb_conn->Connect($db_hostname, $db_username, $db_password, $old_db_name))
 				{
 					$old_db_exist_status = true;
-					if(version_compare(PHP_VERSION, '5.3.0') >= 0) {
-						$sql = 'alter table vtiger_users change user_password user_password varchar(128)';
-						$alterResult = $olddb_conn->_Execute($sql);
-						if(!is_object($alterResult)) {
-							$dbVerifyResult['error_msg'] =
-								$installationStrings['LBL_PASSWORD_FIELD_CHANGE_FAILURE'];
-						}
-						if(!is_array($_SESSION['migration_info']['user_messages'])) {
-							unset($_SESSION['migration_info']['user_messages']);
-							$_SESSION['migration_info']['user_messages'] = array();
-							$_SESSION['migration_info']['user_messages'][] = array(
-							'status' => "<span style='color: red;font-weight: bold'>".
-									$installationStrings['LBL_IMPORTANT_NOTE']."</span>",
-								'msg' => "<span style='color: #3488cc;font-weight: bold'>".
-									$installationStrings['LBL_USER_PASSWORD_CHANGE_NOTE']."</span>"
-							);
-						}
-						
-						self::resetUserPasswords($olddb_conn);
-						$_SESSION['migration_info']['user_pwd'] = $user_name;
-						$migrationInfo['user_pwd'] = $user_name;
-						$user_pwd = $user_name;
-					}
 					
 					if(Migration_Utils::authenticateUser($olddb_conn, $user_name,$user_pwd)==true) {
 						$is_admin = true;
@@ -284,6 +263,8 @@ class Migration_Utils {
 	}	
 	
 	private static function authenticateUser($dbConnection, $userName,$userPassword){
+		$salt = substr($userName, 0, 2);
+		
 		$userResult = $dbConnection->_Execute("SELECT * FROM vtiger_users WHERE user_name = '$userName'");
 		$noOfRows = $userResult->NumRows($userResult);
 		if ($noOfRows > 0) {
@@ -293,8 +274,12 @@ class Migration_Utils {
 			$userStatus =  $userInfo['status'];
 			$isAdmin =  $userInfo['is_admin'];
 			
-			$computedEncryptedPassword = self::getEncryptedPassword($userName, $cryptType,
-					$userPassword);
+			if($cryptType == 'MD5') {
+				$salt = '$1$' . $salt . '$';
+			} else if($cryptType == 'BLOWFISH') {
+				$salt = '$2$' . $salt . '$';
+			}
+			$computedEncryptedPassword = crypt($userPassword, $salt);
 		
 			if($userEncryptedPassword == $computedEncryptedPassword && $userStatus == 'Active' && $isAdmin == 'on'){
 				return true;
@@ -488,12 +473,7 @@ class Migration_Utils {
 		@ini_set('output_buffering','off');
 		ob_implicit_flush(true);
 		echo '<table width="98%" border="1px" cellpadding="3" cellspacing="0" height="100%">';
-		if(is_array($_SESSION['migration_info']['user_messages'])) {
-			foreach ($_SESSION['migration_info']['user_messages'] as $infoMap) {
-				echo "<tr><td>".$infoMap['status']."</td><td>".$infoMap['msg']."</td></tr>";
-			}
-		}
-		echo "<tr><td colspan='2'><b>{$installationStrings['LBL_GOING_TO_APPLY_DB_CHANGES']}...</b></td></tr>";
+		echo "<tr><td colspan='2'><b>{$installationStrings['LBL_GOING_TO_APPLY_DB_CHANGES']}...</b></td><tr>";
 	
 		for($patch_count=0;$patch_count<count($temp);$patch_count++) {
 			//Here we have to include all the files (all db differences for each release will be included)
@@ -531,46 +511,6 @@ class Migration_Utils {
 		create_tab_data_file();
 		create_parenttab_data_file();
 		return $completed;
-	}
-
-	public static function resetUserPasswords($con) {
-		$sql = 'select user_name, id, crypt_type from vtiger_users';
-		$result = $con->_Execute($sql, false);
-		$rowList = $result->GetRows();
-		foreach ($rowList as $row) {
-			$cryptType = $row['crypt_type'];
-			if(strtolower($cryptType) == 'md5' && version_compare(PHP_VERSION, '5.3.0') >= 0) {
-				$cryptType = 'PHP5.3MD5';
-			}
-			$encryptedPassword = self::getEncryptedPassword($row['user_name'], $cryptType,
-					$row['user_name']);
-			$userId = $row['id'];
-			$sql = "update vtiger_users set user_password=?,crypt_type=? where id=?";
-			$updateResult = $con->Execute($sql, array($encryptedPassword, $cryptType, $userId));
-			if(!is_object($updateResult)) {
-				$_SESSION['migration_info']['user_messages'][] = array(
-					'status' => "<span style='color: red;font-weight: bold'>Failed: </span>",
-					'msg' => "$sql<br />".var_export(array($encryptedPassword, $userId))
-				);
-			}
-		}
-	}
-
-	public static function getEncryptedPassword($userName, $cryptType, $userPassword) {
-		$salt = substr($userName, 0, 2);
-		// For more details on salt format look at: http://in.php.net/crypt
-		if($cryptType == 'MD5') {
-			$salt = '$1$' . $salt . '$';
-		} elseif($cryptType == 'BLOWFISH') {
-			$salt = '$2$' . $salt . '$';
-		} elseif($cryptType == 'PHP5.3MD5') {
-			//only change salt for php 5.3 or higher version for backward
-			//compactibility.
-			//crypt API is lot stricter in taking the value for salt.
-			$salt = '$1$' . str_pad($salt, 9, '0');
-		}
-		$computedEncryptedPassword = crypt($userPassword, $salt);
-		return $computedEncryptedPassword;
 	}
 }
 
@@ -1095,13 +1035,13 @@ class Common_Install_Wizard_Utils {
 		return (stripos($dbType ,'mysql') === 0);
 	}
 	
-	static function isOracle($dbType) { 
-		return $dbType == 'oci8'; 
-	}
+    static function isOracle($dbType) { 
+    	return $dbType == 'oci8'; 
+    }
     
-	static function isPostgres($dbType) { 
-		return $dbType == 'pgsql'; 
-	}
+    static function isPostgres($dbType) { 
+    	return $dbType == 'pgsql'; 
+    }
 	
 	public static function getInstallableModulesFromPackages() {		
 		global $optionalModuleStrings;
@@ -1254,17 +1194,7 @@ class Common_Install_Wizard_Utils {
 		
 		return $result;
 	}
-
-	public static function getMySQLVersion($serverInfo) {
-		if(!is_array($serverInfo)) {
-			$version = explode('-',$serverInfo);
-			$mysql_server_version=$version[0];
-		} else {
-			$mysql_server_version = $serverInfo['version'];
-		}
-		return $mysql_server_version;
-	}
-
+	
 }
 
 //Function used to execute the query and display the success/failure of the query

@@ -71,7 +71,7 @@ class CustomView extends CRMEntity{
 		$this->escapemodule[] = "_";
 		$this->smownerid = $current_user->id;
 		$this->moduleMetaInfo = array();
-		if($module != "" && $module != 'Calendar') {
+		if($module != "") {
 			$this->meta = $this->getMeta($module, $current_user);
 		}
 	}
@@ -99,7 +99,7 @@ class CustomView extends CRMEntity{
 	{
 		global $adb,$current_user;
 		$now_action = vtlib_purify($_REQUEST['action']);
-		if(empty($_REQUEST['viewname'])) {
+		if(isset($_REQUEST['viewname']) == false) {
 			if (isset($_SESSION['lvs'][$module]["viewname"]) && $_SESSION['lvs'][$module]["viewname"]!='') {
 				$viewid = $_SESSION['lvs'][$module]["viewname"];
 			}
@@ -302,7 +302,7 @@ class CustomView extends CRMEntity{
 		$tabid = getTabid($module);
 		global $current_user;
 	    require('user_privileges/user_privileges_'.$current_user->id.'.php');
-		if (empty($this->meta) && $module != 'Calendar') {
+		if (empty($this->meta)) {
 			$this->meta = $this->getMeta($module, $current_user);
 		}
 		if($tabid == 9)
@@ -366,9 +366,8 @@ class CustomView extends CRMEntity{
 		
 		if($module == 'Quotes' && $block == 51)
                         $module_columnlist['vtiger_crmentity:crmid::Quotes_Quote_No:I'] = $app_strings['Quote No'];
-		if ($module != 'Calendar') {
-			$moduleFieldList = $this->meta->getModuleFields();
-		}
+
+		$moduleFieldList = $this->meta->getModuleFields();
 		for($i=0; $i<$noofrows; $i++)
 		{
 			$fieldtablename = $adb->query_result($result,$i,"tablename");
@@ -379,7 +378,7 @@ class CustomView extends CRMEntity{
 			$fieldtypeofdata = $fieldtype[0];
 			$fieldlabel = $adb->query_result($result,$i,"fieldlabel");
 			$field = $moduleFieldList[$fieldname];
-			if(!empty($field) && $field->getFieldDataType() == 'reference') {
+			if($field->getFieldDataType() == 'reference') {
 				$fieldtypeofdata = 'V';
 			} else {
 				//Here we Changing the displaytype of the field. So that its criteria will be
@@ -1964,7 +1963,7 @@ class CustomView extends CRMEntity{
 					elseif($status == CV_STATUS_PUBLIC)
 					{
 						$log->debug("Entering when status=3");
-						if($action == 'ListView' || $action == $module."Ajax" || $action == 'index' || $action == 'DetailView')
+						if($action == 'ListView' || $action == $module."Ajax" || $action == 'index')
 						{
 							$permission = "yes";
 						}

@@ -3800,19 +3800,7 @@ function getDuplicateRecordsArr($module)
 				}
 						
 				$result[$col_arr[$k]]=$contactname;
-			}
-			if($ui_type[$fld_arr[$k]] == 15 || $ui_type[$fld_arr[$k]] == 16)
-			{
-				$result[$col_arr[$k]]=getTranslatedString($result[$col_arr[$k]],$module);
-			}
-			if($ui_type[$fld_arr[$k]] == 33){
-				$fieldvalue = explode(' |##| ',$result[$col_arr[$k]]);
-				$result[$col_arr[$k]] = array();
-				foreach ($fieldvalue as $picklistValue) {
-					$result[$col_arr[$k]][] = getTranslatedString($picklistValue,$module);
-				}
-				$result[$col_arr[$k]] = implode(', ',$result[$col_arr[$k]]);
-			}
+			}	
 			if($ui_type[$fld_arr[$k]] ==68)
 			{
 				$parent_id= $result[$col_arr[$k]];
@@ -4199,7 +4187,8 @@ function getCallerName($from) {
 		$caller = $caller."<br>
 						<a target='_blank' href='index.php?module=Leads&action=EditView&phone=$from'>".getTranslatedString('LBL_CREATE_LEAD')."</a><br>
 						<a target='_blank' href='index.php?module=Contacts&phone=$from'>".getTranslatedString('LBL_CREATE_CONTACT')."</a><br>
-						<a target='_blank' href='index.php?module=Accounts&action=EditView&phone=$from'>".getTranslatedString('LBL_CREATE_ACCOUNT')."</a>";
+						<a target='_blank' href='index.php?module=Accounts&action=EditView&phone=$from'>".getTranslatedString('LBL_CREATE_ACCOUNT')."</a><br>
+						<a target='_blank' href='index.php?module=HelpDesk&action=EditView'>".getTranslatedString('LBL_CREATE_TICKET')."</a>";
 	}
 	return $caller;
 }
@@ -4234,6 +4223,41 @@ function getCallerInfo($number){
 		}
 	}
 	return false;
+}
+
+/**
+ * this function searches the given record in the result for the given fields
+ * @param integer $record - the value to search
+ * @param array $fields - the fields to search
+ * @param object $result - the adodb result set in which to search
+ * @param integer $flag - if on, it removes the non-integers from the fields before comparison - 1 to set
+ */
+function searchPhoneNumber($record, $fields, $result, $flag=0){
+	global $adb;
+	$count = $adb->num_rows($result);
+
+	for($i=0;$i<$count;$i++){
+		foreach($fields as $field){
+			$number = $adb->query_result($result, $i, $field);
+			if($flag == 1){
+				$number = getStrippedNumber($number);
+			}
+			if($number === $record){
+				return $i;
+			}
+		}
+	}
+	return false;
+}
+
+/**
+ * this function removes any pre-codes like SIP:, PSTN:, etc added to a number
+ * it also removes any braces or spaces present in a number
+ * @param string $number - the number to be processed
+ */
+function getStrippedNumber($number){
+	$number = preg_replace("/[^\d]/i","",$number);
+	return $number;
 }
 
 /**

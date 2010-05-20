@@ -54,6 +54,14 @@ $smarty->assign('IMAGE_PATH', "themes/$theme/images/");
 $smarty->assign('CHANGE_OWNER', getUserslist());
 $smarty->assign('CHANGE_GROUP_OWNER', getGroupslist());
 
+// Enabling Module Search
+$url_string = '';
+if($_REQUEST['query'] == 'true') {
+	list($where, $ustring) = split('#@@#', getWhereCondition($currentModule));
+	$url_string .= "&query=true$ustring";
+	$smarty->assign('SEARCH_URL', $url_string);
+}
+
 // Custom View
 $customView = new CustomView($currentModule);
 $viewid = $customView->getViewId($currentModule);
@@ -102,31 +110,18 @@ if($viewid ==0)
 }
 
 global $current_user;
-$queryGenerator = new QueryGenerator($currentModule, $current_user);
 if ($viewid != "0") {
-	$queryGenerator->initForCustomViewById($viewid);
+	$queryGenerator = new QueryGenerator($currentModule, $current_user);
+	//TODO move header generation to controller.
+	$list_query = $queryGenerator->getCustomViewQueryById($viewid);
 } else {
-	$queryGenerator->initForDefaultCustomView();
+	$list_query = $queryGenerator->getDefaultCustomViewQuery();
 }
 
-// Enabling Module Search
-$url_string = '';
-if($_REQUEST['query'] == 'true') {
-	// has to REQUEST as it can either $_GET for Dashboard and
-	// $_POST for search in listview.
-	$queryGenerator->addUserSearchConditions($_REQUEST);
-	$ustring = getSearchURL($_REQUEST);
-	$url_string .= "&query=true$ustring";
-	$smarty->assign('SEARCH_URL', $url_string);
+if($where != '') {
+	$list_query = "$list_query AND $where";
 }
 
-$list_query = $queryGenerator->getQuery();
-$where = $queryGenerator->getConditionalWhere();
-if(isset($where) && $where != '') {
-	$_SESSION['export_where'] = $where;
-} else {
-	unset($_SESSION['export_where']);
-}
 // Sorting
 if(!empty($order_by)) {
 	if($order_by == 'smownerid') $list_query .= ' ORDER BY user_name '.$sorder;
@@ -173,7 +168,7 @@ $listview_header = $controller->getListViewHeader($focus,$currentModule,$url_str
 		$order_by);
 $listview_entries = $controller->getListViewEntries($focus,$currentModule,$list_result,
 		$navigation_array);
-$listview_header_search = $controller->getBasicSearchFieldInfoList();
+$listview_header_search = getSearchListHeaderValues($focus,$currentModule,$url_string,$sorder,$order_by,'',$customView);
 
 $smarty->assign('LISTHEADER', $listview_header);
 $smarty->assign('LISTENTITY', $listview_entries);
@@ -181,7 +176,7 @@ $smarty->assign('SEARCHLISTHEADER',$listview_header_search);
 
 // Module Search
 $alphabetical = AlphabeticalSearch($currentModule,'index',$focus->def_basicsearch_col,'true','basic','','','','',$viewid);
-$fieldnames = $controller->getAdvancedSearchOptionString();
+$fieldnames = getAdvSearchfields($currentModule);
 $criteria = getcriteria_options();
 $smarty->assign("ALPHABETICAL", $alphabetical);
 $smarty->assign("FIELDNAMES", $fieldnames);
@@ -198,6 +193,15 @@ if($_REQUEST['errormsg'] != '')
         $smarty->assign("ERROR","");
 }
 $url_string = '&smodule=PRODUCTS'; // assigning http url string
+
+if(isset($where) && $where != '')
+{
+        $list_query .= ' and '.$where;
+
+ $_SESSION['export_where'] = $where;
+}
+else
+   unset($_SESSION['export_where']);
 
 $smarty->assign("SELECT_SCRIPT", $view_script);
 

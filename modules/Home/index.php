@@ -50,7 +50,7 @@ $modulenamearr = Array();
 foreach($tabrows as $resultrow) {
 	if($resultrow['isentitytype'] != '0') {
 		// Eliminate: Events, Emails
-		if($resultrow['tabid'] == '16' || $resultrow['tabid'] == '10' || $resultrow['name'] == 'Webmails') {
+		if($resultrow['tabid'] == '16' || $resultrow['tabid'] == '10') {
 			continue;
 		}
 		$modName=$resultrow['name'];
