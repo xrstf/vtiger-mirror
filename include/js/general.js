@@ -2952,7 +2952,7 @@ function ActivityReminderCallbackProcess(message) {
 	ActivityReminder_callback_win.id  = winuniqueid;
 	ActivityReminder_callback.appendChild(ActivityReminder_callback_win);
 	
-	ActivityReminder_callback_win.innerHTML = message; 
+	$(ActivityReminder_callback_win).update(message);
 	ActivityReminder_callback_win.style.height = "0px"; 
 	ActivityReminder_callback_win.style.display = ""; 
 	
@@ -3643,7 +3643,7 @@ function startCall(number, recordid){
 		'index.php',
 		{	queue: {position: 'end', scope: 'command'},
 			method: 'post',
-			postBody: 'action=PBXManagerAjax&mode=ajax&file=StartCall&ajax=true&module=PBXManager&number='+number+'&recordid='+recordid,
+			postBody: 'action=PBXManagerAjax&mode=ajax&file=StartCall&ajax=true&module=PBXManager&number='+encodeURIComponent(number)+'&recordid='+recordid,
 			onComplete: function(response) {
 							if(response.responseText == ''){
 								//successfully called
@@ -3737,11 +3737,13 @@ function ToolTipManager(){
 		
 		if(getVal  > document.body.clientWidth ){
 			leftSide = eval(leftSide) - eval(widthM);
-			tooltip.style.left = leftSide + 'px';
 		}else{
 			leftSide = eval(leftSide) + (eval(tooltipWidth)/2);
-			tooltip.style.left = leftSide + 'px';
 		}
+		if(leftSide < 0) {
+			leftSide = findPosX(obj) + tooltipWidth;
+		}
+		tooltip.style.left = leftSide + 'px';
 		
 		var heightTooltip = dimensions.y;
 		var bottomSide = eval(topSide) + eval(heightTooltip);

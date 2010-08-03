@@ -128,7 +128,22 @@ class Activity extends CRMEntity {
 		{
 			$this->deleteRelation('vtiger_cntactivityrel');
 		}
-	
+		if(isset($this->column_fields['sendnotification'])){
+
+			$mail_data = Array();
+			$mail_data['user_id'] = $this->column_fields['assigned_user_id'];
+			$mail_data['subject'] = $this->column_fields['subject'];
+			$mail_data['status'] = (($this->column_fields['activitytype']=='Task')?($this->column_fields['taskstatus']):($this->column_fields['eventstatus']));
+			$mail_data['taskpriority'] = $this->column_fields['taskpriority'];
+			$mail_data['contact_name'] = $this->column_fields['contact_id'];
+			$mail_data['description'] = $this->column_fields['description'];
+			$value = getaddEventPopupTime($this->column_fields['time_start'],$this->column_fields['time_end'],'24');
+			$start_hour = $value['starthour'].':'.$value['startmin'].''.$value['startfmt'];
+			$mail_data['st_date_time'] = getDisplayDate($this->column_fields['date_start'])." ".$start_hour;
+			$mail_data['end_date_time']=getDisplayDate($this->column_fields['due_date']);
+			getEventNotification($this->column_fields['activitytype'],$this->column_fields['subject'],$mail_data);
+
+		}
 		$recur_type='';	
 		if(($recur_type == "--None--" || $recur_type == '') && $this->mode == "edit")
 		{
@@ -168,9 +183,10 @@ class Activity extends CRMEntity {
 		
 		global $adb;
 		
-		$cbrecord = $this->id;		
+		$cbrecord = $this->id;
+		unset($_SESSION['next_reminder_time']);
 		if(isset($cbmodule) && isset($cbrecord)) {
-			$cbdate = $this->column_fields['date_start'];
+			$cbdate = getValidDBInsertDateValue($this->column_fields['date_start']);
 			$cbtime = $this->column_fields['time_start'];
 			
 			$reminder_query = "SELECT reminderid FROM vtiger_activity_reminder_popup WHERE semodule = ? and recordid = ?";
@@ -205,6 +221,7 @@ class Activity extends CRMEntity {
 		$log->info("in insertIntoReminderTable  ".$table_name."    module is  ".$module);
 		if($_REQUEST['set_reminder'] == 'Yes')
 		{
+			unset($_SESSION['next_reminder_time']);
 			$log->debug("set reminder is set");
 			$rem_days = $_REQUEST['remdays'];
 			$log->debug("rem_days is ".$rem_days);
@@ -336,6 +353,7 @@ function insertIntoRecurringTable(& $recurObj)
 				$recurring_insert = "insert into vtiger_recurringevents values (?,?,?,?,?,?)";
 				$rec_params = array($current_id, $this->id, $tdate, $type, $recur_freq, $recurringinfo);
 				$adb->pquery($recurring_insert, $rec_params);
+				unset($_SESSION['next_reminder_time']);
 				if($_REQUEST['set_reminder'] == 'Yes')
 				{
 					$this->insertIntoReminderTable("vtiger_activity_reminder",$module,$current_id,'');
@@ -873,7 +891,7 @@ function insertIntoRecurringTable(& $recurObj)
 			$sql = 'DELETE FROM vtiger_cntactivityrel WHERE contactid = ? AND activityid = ?';
 			$this->db->pquery($sql, array($return_id, $id));
 		} elseif($return_module == 'HelpDesk') {
-			$sql = 'DELETE FROM vtiger_seticketsrel WHERE ticketid = ? AND crmid = ?';
+			$sql = 'DELETE FROM vtiger_seactivityrel WHERE crmid = ? AND activityid = ?';
 			$this->db->pquery($sql, array($return_id, $id));
 		} else {
 			$sql='DELETE FROM vtiger_seactivityrel WHERE activityid=?';

@@ -1538,15 +1538,15 @@ function getDBInsertDateValue($value)
 	$insert_date='';
 	if($dat_fmt == 'dd-mm-yyyy')
 	{
-		list($d,$m,$y) = split('-',$value);
+		list($d,$m,$y) = explode('-',$value);
 	}
 	elseif($dat_fmt == 'mm-dd-yyyy')
 	{
-		list($m,$d,$y) = split('-',$value);
+		list($m,$d,$y) = explode('-',$value);
 	}
 	elseif($dat_fmt == 'yyyy-mm-dd')
 	{
-		list($y,$m,$d) = split('-',$value);
+		list($y,$m,$d) = explode('-',$value);
 	}
 
 	if(!$y && !$m && !$d) {
@@ -3029,7 +3029,7 @@ function getCurrentModule($perform_set=false) {
 		$dir = @scandir($root_directory."modules");
 		$temp_arr = Array("CVS","Attic");
 		$res_arr = @array_intersect($dir,$temp_arr);
-		if(count($res_arr) == 0  && !ereg("[/.]",$module)) {
+		if(count($res_arr) == 0  && !preg_match("/[\/.]/",$module)) {
 			if(@in_array($module,$dir))
 				$is_module = true;
 		}
@@ -3800,7 +3800,19 @@ function getDuplicateRecordsArr($module)
 				}
 						
 				$result[$col_arr[$k]]=$contactname;
-			}	
+			}
+			if($ui_type[$fld_arr[$k]] == 15 || $ui_type[$fld_arr[$k]] == 16)
+			{
+				$result[$col_arr[$k]]=getTranslatedString($result[$col_arr[$k]],$module);
+			}
+			if($ui_type[$fld_arr[$k]] == 33){
+				$fieldvalue = explode(' |##| ',$result[$col_arr[$k]]);
+				$result[$col_arr[$k]] = array();
+				foreach ($fieldvalue as $picklistValue) {
+					$result[$col_arr[$k]][] = getTranslatedString($picklistValue,$module);
+				}
+				$result[$col_arr[$k]] = implode(', ',$result[$col_arr[$k]]);
+			}
 			if($ui_type[$fld_arr[$k]] ==68)
 			{
 				$parent_id= $result[$col_arr[$k]];
@@ -4187,8 +4199,7 @@ function getCallerName($from) {
 		$caller = $caller."<br>
 						<a target='_blank' href='index.php?module=Leads&action=EditView&phone=$from'>".getTranslatedString('LBL_CREATE_LEAD')."</a><br>
 						<a target='_blank' href='index.php?module=Contacts&phone=$from'>".getTranslatedString('LBL_CREATE_CONTACT')."</a><br>
-						<a target='_blank' href='index.php?module=Accounts&action=EditView&phone=$from'>".getTranslatedString('LBL_CREATE_ACCOUNT')."</a><br>
-						<a target='_blank' href='index.php?module=HelpDesk&action=EditView'>".getTranslatedString('LBL_CREATE_TICKET')."</a>";
+						<a target='_blank' href='index.php?module=Accounts&action=EditView&phone=$from'>".getTranslatedString('LBL_CREATE_ACCOUNT')."</a>";
 	}
 	return $caller;
 }
@@ -4223,41 +4234,6 @@ function getCallerInfo($number){
 		}
 	}
 	return false;
-}
-
-/**
- * this function searches the given record in the result for the given fields
- * @param integer $record - the value to search
- * @param array $fields - the fields to search
- * @param object $result - the adodb result set in which to search
- * @param integer $flag - if on, it removes the non-integers from the fields before comparison - 1 to set
- */
-function searchPhoneNumber($record, $fields, $result, $flag=0){
-	global $adb;
-	$count = $adb->num_rows($result);
-
-	for($i=0;$i<$count;$i++){
-		foreach($fields as $field){
-			$number = $adb->query_result($result, $i, $field);
-			if($flag == 1){
-				$number = getStrippedNumber($number);
-			}
-			if($number === $record){
-				return $i;
-			}
-		}
-	}
-	return false;
-}
-
-/**
- * this function removes any pre-codes like SIP:, PSTN:, etc added to a number
- * it also removes any braces or spaces present in a number
- * @param string $number - the number to be processed
- */
-function getStrippedNumber($number){
-	$number = preg_replace("/[^\d]/i","",$number);
-	return $number;
 }
 
 /**
@@ -4606,6 +4582,11 @@ function installVtlibModule($packagename, $packagepath, $customized=false) {
 	$Vtiger_Utils_Log = true;
 	$package = new Vtiger_Package();
 	
+	if($package->isLanguageType($packagepath)) {
+		$package = new Vtiger_Language();
+		$package->import($packagepath, true);
+		return;
+	}
 	$module = $package->getModuleNameFromZip($packagepath);
 	$module_exists = false;
 	$module_dir_exists = false;
@@ -4614,7 +4595,7 @@ function installVtlibModule($packagename, $packagepath, $customized=false) {
 	} else if(Vtiger_Module::getInstance($module)) {
 		$log->fatal("$module already exists!");
 		$module_exists = true;
-	} 
+	}
 	if($module_exists == false) {
 		$log->debug("$module - Installation starts here");
 		$package->import($packagepath, true);
@@ -4622,7 +4603,7 @@ function installVtlibModule($packagename, $packagepath, $customized=false) {
 		if (empty($moduleInstance)) {
 			$log->fatal("$module module installation failed!");
 		}
-	}	
+	}
 }
 
 /* Function to update Vtlib Compliant modules
@@ -4798,7 +4779,7 @@ function getValidDBInsertDateValue($value) {
             }
         }
 	global $current_user;
-	list($y,$m,$d) = split('-',$value);
+	list($y,$m,$d) = explode('-',$value);
 
 	if(strlen($y)<4){
 		$insert_date = getDBInsertDateValue($value);
@@ -4829,6 +4810,7 @@ function _phpset_memorylimit_MB($newvalue) {
 function sanitizeUploadFileName($fileName, $badFileExtensions) {
 	
 	$fileName = preg_replace('/\s+/', '_', $fileName);//replace space with _ in filename
+	$fileName = rtrim($fileName, '\\/<>?*:"<>|');
 	
 	$fileNameParts = explode(".", $fileName);
 	$countOfFileNameParts = count($fileNameParts);

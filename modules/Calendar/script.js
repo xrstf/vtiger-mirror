@@ -751,8 +751,7 @@ function cal_navigation(type,urlstring,start)
                                 method: 'post',
                                 postBody: 'module=Calendar&action=CalendarAjax&file=ActivityAjax&ajax=true&n_type=nav&viewOption='+OptionData+url+start+'&subtab='+type+'&onlyforuser='+encodeURIComponent(onlyforusers),
                                 onComplete: function(response) {
-					//alert(response.responseText);
-                                        if(OptionData == 'listview')
+					if(OptionData == 'listview')
                                         {
                                                 result = response.responseText.split('####');
                                                 $("total_activities").innerHTML = result[1];

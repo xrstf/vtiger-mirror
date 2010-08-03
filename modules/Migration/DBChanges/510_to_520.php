@@ -359,6 +359,8 @@ function VT520_updateADVColumnList($columnname, $row) {
 
 function VT520_queryGeneratorMigration() {
 	$db = PearDatabase::getInstance();
+	$sql = "delete from vtiger_cvadvfilter where columnname IS NULL or columnname='';";
+	$db->pquery($sql, array());
 	$sql = "select id from vtiger_users where is_admin='On' and status='Active' limit 1";
 	$result = $db->pquery($sql, array());
 	$adminId = 1;
@@ -404,6 +406,50 @@ function VT520_queryGeneratorMigration() {
 		"vtiger_cvcolumnlist on vtiger_customview.cvid=vtiger_cvcolumnlist.cvid where entitytype not in ".
 		"('Products','HelpDesk','Faq') and columnname like 'vtiger_quotes:quoteid:quote_id%';";
 	VT520_migrateCustomview($sql,'SalesOrder', $user, VT520_updateADVColumnList);
+
+	$tabId = getTabid('Contacts');
+	$sql = "select fieldid from vtiger_field where tabid=? and fieldname='birthday';";
+	$params = array($tabId);
+	$result = $db->pquery($sql, $params);
+	$it = new SqlResultIterator($db, $result);
+	$fieldId = null;
+	foreach($it as $row) {
+		$fieldId = $row->fieldid;
+	}
+	if(!empty($fieldId)) {
+		$sql = "update vtiger_field set typeofdata = 'D~O' where fieldid=?;";
+		$params = array($fieldId);
+		$result = $db->pquery($sql, $params);
+	} else {
+		echo '
+			<tr width="100%">
+				<td width="25%">Failure</td>
+				<td width="5%"><font color="red"> F </font></td>
+				<td width="70%">Failed to change typeofdata of birthday field</td>
+			</tr>';
+	}
+
+	$tabId = getTabid('Documents');
+	$sql = "select fieldid from vtiger_field where tabid=? and fieldname='filesize';";
+	$params = array($tabId);
+	$result = $db->pquery($sql, $params);
+	$it = new SqlResultIterator($db, $result);
+	$fieldId = null;
+	foreach($it as $row) {
+		$fieldId = $row->fieldid;
+	}
+	if(!empty($fieldId)) {
+		$sql = "update vtiger_field set typeofdata = 'I~O' where fieldid=?;";
+		$params = array($fieldId);
+		$result = $db->pquery($sql, $params);
+	} else {
+		echo '
+			<tr width="100%">
+				<td width="25%">Failure</td>
+				<td width="5%"><font color="red"> F </font></td>
+				<td width="70%">Failed to change typeofdata of filesize field</td>
+			</tr>';
+	}
 }
 
 VT520_queryGeneratorMigration();
@@ -448,7 +494,7 @@ if($adb->num_rows($maxReportIdResult) > 0) {
 				$maxColumnIndex = 0;
 				for($j=0;$j<$noOfConditions; $j++) {
 					$columnIndex = $adb->query_result($relcriteriaResult, $j, 'columnindex');
-					if($max < $columnIndex) {
+					if($maxColumnIndex < $columnIndex) {
 						$maxColumnIndex = $columnIndex;
 					}
 					$columnIndexArray[] = $columnIndex;
@@ -467,11 +513,13 @@ ExecuteQuery("CREATE TABLE IF NOT EXISTS `vtiger_customerportal_tabs` ( `tabid` 
 	default '1', `sequence` int(1) default NULL, PRIMARY KEY  (`tabid`)) ENGINE=InnoDB 
 	DEFAULT CHARSET=utf8");
 
-ExecuteQuery("CREATE TABLE `vtiger_customerportal_prefs` ( `tabid` int(11) NOT NULL, `prefkey` 
+ExecuteQuery("CREATE TABLE IF NOT EXISTS `vtiger_customerportal_prefs` ( `tabid` int(11) NOT NULL, `prefkey` 
 	varchar(100) default NULL, `prefvalue` int(20) default NULL, INDEX tabid_idx(tabid) 
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8");
 
 
+//Adding Block to email fields 
+$blockquery = "select blockid from vtiger_blocks where blocklabel = ?"; 
 $blockres = $adb->pquery($blockquery,array('LBL_EMAIL_INFORMATION'));
 $blockid = $adb->query_result($blockres,0,'blockid');
 $fieldsqueryuitype8 = 'update vtiger_field set block=? where tabid=? and uitype=8';
@@ -486,8 +534,84 @@ $adb->pquery($fieldsqueryuitype1,array($blockid,$email_Tabid));
 $fieldsqueryuitype16 = 'update vtiger_field set block=? where tabid=? and uitype=16';
 $adb->pquery($fieldsqueryuitype16,array($blockid,$email_Tabid));
 
+require_once 'include/utils/utils.php';
+
+$sql = 'delete from vtiger_field where tablename=? and fieldname=? and tabid=?';
+$params = array('vtiger_seactivityrel','parent_id',getTabid('Emails'));
+$adb->pquery($sql,$params);
+$sql = 'update vtiger_field set uitype=?,displaytype=? where tablename=? and'.
+' fieldname=? and tabid=?';
+$params = array('357',1,'vtiger_emaildetails','parent_id',getTabid('Emails'));
+$adb->pquery($sql,$params);
+$sql = 'update vtiger_field set block=(select blockid from vtiger_blocks where '.
+"blocklabel=?) where tablename=?";
+$params = array('LBL_EMAIL_INFORMATION','vtiger_emaildetails');
+$adb->pquery($sql,$params);
+
+// Correct the type
+ExecuteQuery("UPDATE vtiger_field SET typeofdata='V~O' WHERE typeofdata='V~0'");
+
+function VT520_manageIndexes() {
+	$db = PearDatabase::getInstance();
+	ExecuteQuery("ALTER TABLE vtiger_potential ADD INDEX `vt_pot_sales_stage_amount_idx` ".
+			"(amount, sales_stage)");
+	$result = $db->pquery("SELECT COUNT(1) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE table_schema = ".
+			"'$db->dbName' AND table_name = 'vtiger_potential' AND index_name = ".
+			"'potential_potentialid_idx'",array());
+	$count = $db->query_result($result, 0, 'count');
+	if($count > 0) {
+		ExecuteQuery("ALTER TABLE vtiger_potential DROP INDEX `potential_potentialid_idx`");
+	}
+	$result = $db->pquery("SELECT COUNT(1) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE table_schema = ".
+			"'$db->dbName' AND table_name = 'vtiger_potential' AND index_name = ".
+			"'potential_accountid_idx'",array());
+	$count = $db->query_result($result, 0, 'count');
+	if($count > 0) {
+		ExecuteQuery("ALTER TABLE vtiger_potential DROP INDEX `potential_accountid_idx`");
+		ExecuteQuery("ALTER TABLE vtiger_potential ADD INDEX `potential_relatedto_idx` ".
+			"(related_to)");
+	}
+	$result = $db->pquery("SELECT COUNT(1) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE table_schema = ".
+			"'$db->dbName' AND table_name = 'vtiger_crmentity' AND index_name = ".
+			"'crmentity_smownerid_idx'",array());
+	$count = $db->query_result($result, 0, 'count');
+	if($count > 0) {
+		ExecuteQuery("ALTER TABLE vtiger_crmentity DROP INDEX `crmentity_smownerid_idx`");
+	}
+	$result = $db->pquery("SELECT COUNT(1) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE table_schema = ".
+			"'$db->dbName' AND table_name = 'vtiger_crmentity' AND index_name = ".
+			"'crmentity_smownerid_deleted_idx'",array());
+	$count = $db->query_result($result, 0, 'count');
+	if($count > 0) {
+		ExecuteQuery("ALTER TABLE vtiger_crmentity DROP INDEX `crmentity_smownerid_deleted_idx`");
+	}
+	ExecuteQuery("ALTER TABLE vtiger_crmentity ADD INDEX `crm_ownerid_del_setype_idx` ".
+		"(smownerid,deleted,setype)");
+}
+
+function VT520_fieldCleanUp() {
+	$db = PearDatabase::getInstance();
+	$result = $db->pquery("SELECT fieldid,typeofdata FROM vtiger_field WHERE fieldname = ".
+			"'birthday' AND tabid = '".getTabid('Contacts')."'",array());
+	$fieldId = $db->query_result($result, 0, 'fieldid');
+	$typeOfData = $db->query_result($result, 0, 'typeofdata');
+	$typeInfo = explode('~', $typeOfData);
+	$mandatory = $typeInfo[1];
+	ExecuteQuery("update vtiger_field set typeofdata='D~$mandatory' where fieldid=$fieldId");
+	$result = $db->pquery("SELECT fieldid,typeofdata FROM vtiger_field WHERE fieldname = ".
+			"'eventstatus' AND tabid = '".getTabid('Calendar')."'",array());
+	$fieldId = $db->query_result($result, 0, 'fieldid');
+	$typeOfData = $db->query_result($result, 0, 'typeofdata');
+	$typeInfo = explode('~', $typeOfData);
+	$type = $typeInfo[0];
+	ExecuteQuery("update vtiger_field set typeofdata='$type~O' where fieldid=$fieldId");
+}
+
+VT520_manageIndexes();
+VT520_fieldCleanUp();
 
 $migrationlog->debug("\n\nDB Changes from 5.1.0 to 5.2.0 -------- Ends \n\n");
 
+ExecuteQuery("DROP TABLE IF EXISTS vtiger_asteriskoutgoingcalls");
 
 ?>

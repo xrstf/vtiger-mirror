@@ -7,7 +7,7 @@
 			<autoincrement />
 		</field>
 		<field name="user_name" type="C" size="255" />
-		<field name="user_password" type="C" size="30" />
+		<field name="user_password" type="C" size="128" />
 		<field name="user_hash" type="C" size="32" />
 		<field name="cal_color" type="C" size="25">
 			<default value="#E6FAD8" />
@@ -143,18 +143,16 @@
 		<index name="crmentity_smcreatorid_idx">
 			<col>smcreatorid</col>
 		</index>
-		<index name="crmentity_smownerid_idx">
-			<col>smownerid</col>
-		</index>
 		<index name="crmentity_modifiedby_idx">
 			<col>modifiedby</col>
 		</index>
 		<index name="crmentity_deleted_idx">
 			<col>deleted</col>
 		</index>
-		<index name="crmentity_smownerid_deleted_idx">
+		<index name="crm_ownerid_del_setype_idx">
 			<col>smownerid</col>
 			<col>deleted</col>
+			<col>setype</col>
 		</index>
 		<opt platform="mysql">Type=InnoDB</opt>
 	</table>
@@ -850,13 +848,14 @@
 			<default value="0" />
 		</field>
 
-		<index name="potential_accountid_idx">
-			<col>accountid</col>
-		</index>
-		<index name="potential_potentialid_idx">
-			<col>potentialid</col>
+		<index name="potential_relatedto_idx">
+			<col>related_to</col>
 		</index>
 		<index name="potentail_sales_stage_idx">
+			<col>sales_stage</col>
+		</index>
+		<index name="potentail_sales_stage_amount_idx">
+			<col>amount</col>
 			<col>sales_stage</col>
 		</index>
 		<opt platform="mysql">Type=InnoDB</opt>
@@ -6925,16 +6924,6 @@
 		</field>
         <field name="relcrmid" type="I" size="19">
 		</field>
-	</table>	
-
-	<table name="vtiger_asteriskoutgoingcalls">
-		<field name="userid" type="I" size="11">
-		</field>
-		<field name="from_number" type="C" size="50">
-		</field>
-		<field name="to_number" type="C" size="30">
-		</field>
-		<opt platform="mysql">Type=InnoDB</opt>
 	</table>
 	<!--  asterisk integration ends -->
 

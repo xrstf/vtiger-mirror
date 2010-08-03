@@ -32,6 +32,7 @@ class ListViewController {
 	private $user;
 	private $picklistValueMap;
 	private $picklistRoleMap;
+	private $headerSortingEnabled;
 	public function __construct($db, $user, $generator) {
 		$this->queryGenerator = $generator;
 		$this->db = $db;
@@ -41,6 +42,15 @@ class ListViewController {
 		$this->ownerNameList = array();
 		$this->picklistValueMap = array();
 		$this->picklistRoleMap = array();
+		$this->headerSortingEnabled = true;
+	}
+
+	public function isHeaderSortingEnabled() {
+		return $this->headerSortingEnabled;
+	}
+
+	public function setHeaderSorting($enabled) {
+		$this->headerSortingEnabled = $enabled;
 	}
 
 	public function setupAccessiblePicklistValueList($name) {
@@ -371,10 +381,10 @@ class ListViewController {
 					} else {
 						$parentModule = $this->typeList[$value];
 					}
-					if(!empty($value) && !empty($this->nameList[$fieldName])) {
+					if(!empty($value) && !empty($this->nameList[$fieldName]) && !empty($parentModule)) {
 						$parentMeta = $this->queryGenerator->getMeta($parentModule);
 						$value = textlength_check($this->nameList[$fieldName][$value]);
-						if ($parentMeta->isModuleEntity()) {
+						if ($parentMeta->isModuleEntity() && $parentModule != "Users") {
 							$value = "<a href='index.php?module=$parentModule&action=DetailView&".
 								"record=$rawValue' title='$parentModule'>$value</a>";
 						}
@@ -419,10 +429,10 @@ class ListViewController {
 
 				$nameFields = $this->queryGenerator->getModuleNameFields($module);
 				$nameFieldList = explode(',',$nameFields);
-				if(in_array($fieldName, $nameFieldList)) {
+				if(in_array($fieldName, $nameFieldList) && $module != 'Emails') {
 					$value = "<a href='index.php?module=$module&action=DetailView&record=".
 					"$recordId' title='$module'>$value</a>";
-				} elseif($fieldName == $focus->list_link_field) {
+				} elseif($fieldName == $focus->list_link_field && $module != 'Emails') {
 					$value = "<a href='index.php?module=$module&action=DetailView&record=".
 					"$recordId' title='$module'>$value</a>";
 				}
@@ -579,10 +589,14 @@ class ListViewController {
 						$temp_sorder.$sort_qry."\");' class='listFormHeaderLinks'>".
 						getTranslatedString('LBL_LIST_USER_NAME_ROLE',$module)."".$arrow."</a>";
 				} else {
-					$name = "<a href='javascript:;' onClick='getListViewEntries_js(\"".$module.
-						"\",\"parenttab=".$tabname."&order_by=".$field->getColumnName()."&start=".
-						$_SESSION["lvs"][$module]["start"]."&sorder=".$temp_sorder."".
-					$sort_qry."\");' class='listFormHeaderLinks'>".$label."".$arrow."</a>";
+					if($this->isHeaderSortingEnabled()) {
+						$name = "<a href='javascript:;' onClick='getListViewEntries_js(\"".$module.
+							"\",\"parenttab=".$tabname."&order_by=".$field->getColumnName()."&start=".
+							$_SESSION["lvs"][$module]["start"]."&sorder=".$temp_sorder."".
+						$sort_qry."\");' class='listFormHeaderLinks'>".$label."".$arrow."</a>";
+					} else {
+						$name = $label;
+					}
 				}
 				$arrow = '';
 			} else {
@@ -601,6 +615,55 @@ class ListViewController {
 				isPermitted($module,"Delete","") == 'yes'))
 			$header[] = getTranslatedString("LBL_ACTION", $module);
 		return $header;
+	}
+
+	public function getBasicSearchFieldInfoList() {
+		$fields = $this->queryGenerator->getFields();
+		$whereFields = $this->queryGenerator->getWhereFields();
+		$meta = $this->queryGenerator->getMeta($this->queryGenerator->getModule());
+
+		$moduleFields = $meta->getModuleFields();
+		$accessibleFieldList = array_keys($moduleFields);
+		$listViewFields = array_intersect($fields, $accessibleFieldList);
+		$basicSearchFieldInfoList = array();
+		foreach ($listViewFields as $fieldName) {
+			$field = $moduleFields[$fieldName];
+			$basicSearchFieldInfoList[$fieldName] = getTranslatedString($field->getFieldLabelKey(),
+					$this->queryGenerator->getModule());
+		}
+		return $basicSearchFieldInfoList;
+	}
+
+	public function getAdvancedSearchOptionString() {
+		$module = $this->queryGenerator->getModule();
+		$meta = $this->queryGenerator->getMeta($module);
+
+		$moduleFields = $meta->getModuleFields();
+		$i =0;
+		foreach ($moduleFields as $fieldName=>$field) {
+			if($field->getFieldDataType() == 'reference') {
+				$typeOfData = 'V';
+			} else if($field->getFieldDataType() == 'boolean') {
+				$typeOfData = 'C';
+			} else {
+				$typeOfData = $field->getTypeOfData();
+				$typeOfData = explode("~",$typeOfData);
+				$typeOfData = $typeOfData[0];
+			}
+			$label = getTranslatedString($field->getFieldLabelKey(), $module);
+			if(empty($label)) {
+				$label = $field->getFieldLabelKey();
+			}
+			if($label == "Start Date & Time") {
+				$fieldlabel = "Start Date";
+			}
+			$selected = '';
+			if($i++ == 0) {
+				$selected = "selected";
+			}
+			$OPTION_SET .= "<option value=\'$fieldName::::$typeOfData\' $selected>$label</option>";
+		}
+		return $OPTION_SET;
 	}
 
 }

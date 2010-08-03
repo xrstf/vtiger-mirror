@@ -57,8 +57,7 @@ class Installation_Utils {
 				$db_server_status = true;
 				$serverInfo = $conn->ServerInfo();
 				if(Common_Install_Wizard_Utils::isMySQL($db_type)) {
-					$version = explode('-',$serverInfo);
-					$mysql_server_version=$version[0];
+					$mysql_server_version = Common_Install_Wizard_Utils::getMySQLVersion($serverInfo);
 				}
 				if($create_db) {
 					// drop the current database if it exists
@@ -197,8 +196,7 @@ class Migration_Utils {
 				$db_server_status = true;
 				$serverInfo = $conn->ServerInfo();
 				if(Common_Install_Wizard_Utils::isMySQL($db_type)) {
-					$version = explode('-',$serverInfo);
-					$mysql_server_version=$version[0];
+					$mysql_server_version = Common_Install_Wizard_Utils::getMySQLVersion($serverInfo);
 				}
 		
 				// test the connection to the old database
@@ -206,6 +204,29 @@ class Migration_Utils {
 				if(@$olddb_conn->Connect($db_hostname, $db_username, $db_password, $old_db_name))
 				{
 					$old_db_exist_status = true;
+					if(version_compare(PHP_VERSION, '5.3.0') >= 0) {
+						$sql = 'alter table vtiger_users change user_password user_password varchar(128)';
+						$alterResult = $olddb_conn->_Execute($sql);
+						if(!is_object($alterResult)) {
+							$dbVerifyResult['error_msg'] =
+								$installationStrings['LBL_PASSWORD_FIELD_CHANGE_FAILURE'];
+						}
+						if(!is_array($_SESSION['migration_info']['user_messages'])) {
+							unset($_SESSION['migration_info']['user_messages']);
+							$_SESSION['migration_info']['user_messages'] = array();
+							$_SESSION['migration_info']['user_messages'][] = array(
+							'status' => "<span style='color: red;font-weight: bold'>".
+									$installationStrings['LBL_IMPORTANT_NOTE']."</span>",
+								'msg' => "<span style='color: #3488cc;font-weight: bold'>".
+									$installationStrings['LBL_USER_PASSWORD_CHANGE_NOTE']."</span>"
+							);
+						}
+						
+						self::resetUserPasswords($olddb_conn);
+						$_SESSION['migration_info']['user_pwd'] = $user_name;
+						$migrationInfo['user_pwd'] = $user_name;
+						$user_pwd = $user_name;
+					}
 					
 					if(Migration_Utils::authenticateUser($olddb_conn, $user_name,$user_pwd)==true) {
 						$is_admin = true;
@@ -249,7 +270,7 @@ class Migration_Utils {
 		} else {			
 			$web_root = ($_SERVER["HTTP_HOST"]) ? $_SERVER["HTTP_HOST"]:$_SERVER['SERVER_NAME'].':'.$_SERVER['SERVER_PORT'];
 			$web_root .= $_SERVER["REQUEST_URI"];
-			$web_root = eregi_replace("/install.php(.)*", "", $web_root);
+			$web_root = preg_replace("/\/install.php(.)*/i", "", $web_root);
 			$site_URL = "http://".$web_root;
 			$configInfo['site_URL'] = $site_URL;
 			$dbVerifyResult['config_info'] = $configInfo;
@@ -263,8 +284,6 @@ class Migration_Utils {
 	}	
 	
 	private static function authenticateUser($dbConnection, $userName,$userPassword){
-		$salt = substr($userName, 0, 2);
-		
 		$userResult = $dbConnection->_Execute("SELECT * FROM vtiger_users WHERE user_name = '$userName'");
 		$noOfRows = $userResult->NumRows($userResult);
 		if ($noOfRows > 0) {
@@ -274,12 +293,8 @@ class Migration_Utils {
 			$userStatus =  $userInfo['status'];
 			$isAdmin =  $userInfo['is_admin'];
 			
-			if($cryptType == 'MD5') {
-				$salt = '$1$' . $salt . '$';
-			} else if($cryptType == 'BLOWFISH') {
-				$salt = '$2$' . $salt . '$';
-			}
-			$computedEncryptedPassword = crypt($userPassword, $salt);
+			$computedEncryptedPassword = self::getEncryptedPassword($userName, $cryptType,
+					$userPassword);
 		
 			if($userEncryptedPassword == $computedEncryptedPassword && $userStatus == 'Active' && $isAdmin == 'on'){
 				return true;
@@ -473,7 +488,12 @@ class Migration_Utils {
 		@ini_set('output_buffering','off');
 		ob_implicit_flush(true);
 		echo '<table width="98%" border="1px" cellpadding="3" cellspacing="0" height="100%">';
-		echo "<tr><td colspan='2'><b>{$installationStrings['LBL_GOING_TO_APPLY_DB_CHANGES']}...</b></td><tr>";
+		if(is_array($_SESSION['migration_info']['user_messages'])) {
+			foreach ($_SESSION['migration_info']['user_messages'] as $infoMap) {
+				echo "<tr><td>".$infoMap['status']."</td><td>".$infoMap['msg']."</td></tr>";
+			}
+		}
+		echo "<tr><td colspan='2'><b>{$installationStrings['LBL_GOING_TO_APPLY_DB_CHANGES']}...</b></td></tr>";
 	
 		for($patch_count=0;$patch_count<count($temp);$patch_count++) {
 			//Here we have to include all the files (all db differences for each release will be included)
@@ -494,6 +514,7 @@ class Migration_Utils {
 		/* Install Vtlib Compliant Modules */
 		Common_Install_Wizard_Utils::installMandatoryModules();
 		Migration_Utils::installOptionalModules($migrationInfo['selected_optional_modules'], $migrationInfo['source_directory'], $migrationInfo['root_directory']);
+		Migration_utils::copyLanguageFiles($migrationInfo['source_directory'], $migrationInfo['root_directory']);
 		
 		//Here we have to update the version in table. so that when we do migration next time we will get the version
 		$res = $adb->query('SELECT * FROM vtiger_version');
@@ -512,6 +533,91 @@ class Migration_Utils {
 		create_parenttab_data_file();
 		return $completed;
 	}
+
+	public static function resetUserPasswords($con) {
+		$sql = 'select user_name, id, crypt_type from vtiger_users';
+		$result = $con->_Execute($sql, false);
+		$rowList = $result->GetRows();
+		foreach ($rowList as $row) {
+			$cryptType = $row['crypt_type'];
+			if(strtolower($cryptType) == 'md5' && version_compare(PHP_VERSION, '5.3.0') >= 0) {
+				$cryptType = 'PHP5.3MD5';
+			}
+			$encryptedPassword = self::getEncryptedPassword($row['user_name'], $cryptType,
+					$row['user_name']);
+			$userId = $row['id'];
+			$sql = "update vtiger_users set user_password=?,crypt_type=? where id=?";
+			$updateResult = $con->Execute($sql, array($encryptedPassword, $cryptType, $userId));
+			if(!is_object($updateResult)) {
+				$_SESSION['migration_info']['user_messages'][] = array(
+					'status' => "<span style='color: red;font-weight: bold'>Failed: </span>",
+					'msg' => "$sql<br />".var_export(array($encryptedPassword, $userId))
+				);
+			}
+		}
+	}
+
+	public static function getEncryptedPassword($userName, $cryptType, $userPassword) {
+		$salt = substr($userName, 0, 2);
+		// For more details on salt format look at: http://in.php.net/crypt
+		if($cryptType == 'MD5') {
+			$salt = '$1$' . $salt . '$';
+		} elseif($cryptType == 'BLOWFISH') {
+			$salt = '$2$' . $salt . '$';
+		} elseif($cryptType == 'PHP5.3MD5') {
+			//only change salt for php 5.3 or higher version for backward
+			//compactibility.
+			//crypt API is lot stricter in taking the value for salt.
+			$salt = '$1$' . str_pad($salt, 9, '0');
+		}
+		$computedEncryptedPassword = crypt($userPassword, $salt);
+		return $computedEncryptedPassword;
+	}
+
+	public static function copyLanguageFiles($sourceDirectory, $destinationDirectory) {
+		global $adb;
+		$result = $adb->pquery('select * from vtiger_language', array());
+		$it = new SqlResultIterator($adb, $result);
+		$installedLanguages = array();
+		$defaultLanguage = 'en_us';
+		foreach ($it as $row) {
+			if($row->prefix !== $defaultLanguage) {
+				$installedLanguages[] = $row->prefix;
+			}
+		}
+		self::copyLanguageFileFromFolder($sourceDirectory, $destinationDirectory,
+				$installedLanguages);
+	}
+
+	public static function copyLanguageFileFromFolder($sourceDirectory, $destinationDirectory,
+			$installedLanguages) {
+		$ignoreDirectoryList = array('.', '..', 'storage','themes','fckeditor', 'HTMLPurifier');
+		if ($handle = opendir($sourceDirectory)) {
+			while (false !== ($file = readdir($handle))) {
+				if(is_dir($sourceDirectory.DIRECTORY_SEPARATOR.$file) && !in_array($file,
+						$ignoreDirectoryList)) {
+					self::copyLanguageFileFromFolder($sourceDirectory.DIRECTORY_SEPARATOR.$file,
+							$destinationDirectory.DIRECTORY_SEPARATOR.$file,$installedLanguages);
+					continue;
+				} elseif(in_array($file, $ignoreDirectoryList)) {
+					continue;
+				}
+				$found = false;
+				foreach ($installedLanguages as $prefix) {
+					if(strpos($file, $prefix) === 0) {
+						$found = true;
+						break;
+					}
+				}
+				if (!empty($file) && $found == true) {
+					copy($sourceDirectory.DIRECTORY_SEPARATOR.$file, $destinationDirectory.
+							DIRECTORY_SEPARATOR.$file);
+				}
+			}
+			closedir($handle);
+		}
+	}
+
 }
 
 class ConfigFile_Utils {
@@ -956,6 +1062,13 @@ class Common_Install_Wizard_Utils {
 		       return $array;
 		
 		}';
+
+	function getRecommendedDirectives() {
+		if(version_compare(PHP_VERSION, '5.3.0') >= 0) {
+			self::$recommendedDirectives['error_reporting'] = 'E_WARNING & ~E_NOTICE & ~E_DEPRECATED';
+		}
+		return self::$recommendedDirectives;
+	}
 	
 	/** Function to check the file access is made within web root directory. */
 	static function checkFileAccess($filepath) {
@@ -1009,7 +1122,11 @@ class Common_Install_Wizard_Utils {
 			$directiveValues['max_execution_time'] = ini_get('max_execution_time');
 		if (ini_get('memory_limit') < 32)
 			$directiveValues['memory_limit'] = ini_get('memory_limit');
-		if (ini_get('error_reporting') != '2')
+		$errorReportingValue = E_WARNING & ~E_NOTICE;
+		if(version_compare(PHP_VERSION, '5.3.0') >= 0) {
+			$errorReportingValue = E_WARNING & ~E_NOTICE & ~E_DEPRECATED;
+		}
+		if (ini_get('error_reporting') != $errorReportingValue)
 			$directiveValues['error_reporting'] = 'NOT RECOMMENDED';
 		if (ini_get('allow_call_time_pass_reference') != '1' || stripos(ini_get('allow_call_time_pass_reference'), 'Off') > -1)
 			$directiveValues['allow_call_time_pass_reference'] = 'Off';
@@ -1035,13 +1152,13 @@ class Common_Install_Wizard_Utils {
 		return (stripos($dbType ,'mysql') === 0);
 	}
 	
-    static function isOracle($dbType) { 
-    	return $dbType == 'oci8'; 
-    }
+	static function isOracle($dbType) { 
+		return $dbType == 'oci8'; 
+	}
     
-    static function isPostgres($dbType) { 
-    	return $dbType == 'pgsql'; 
-    }
+	static function isPostgres($dbType) { 
+		return $dbType == 'pgsql'; 
+	}
 	
 	public static function getInstallableModulesFromPackages() {		
 		global $optionalModuleStrings;
@@ -1071,7 +1188,7 @@ class Common_Install_Wizard_Utils {
 				if($moduleName != null) {					
 					$moduleDetails = array();
 					$moduleDetails['description'] = $optionalModuleStrings[$moduleName.'_description'];
-					
+
 					if(Vtiger_Version::check($moduleForVtigerVersion,'>=') && Vtiger_Version::check($moduleMaxVtigerVersion,'<')) {
 						$moduleDetails['selected'] = true;
 						$moduleDetails['enabled'] = true;						
@@ -1144,6 +1261,10 @@ class Common_Install_Wizard_Utils {
 		        if (!empty($packagename)) {
 		        	$packagepath = "packages/vtiger/optional/$file";
 					$package = new Vtiger_Package();
+					if($package->isLanguageType($packagepath)) {
+						installVtlibModule($packagename, $packagepath);
+						continue;
+					}
 	        		$module = $package->getModuleNameFromZip($packagepath);
 	        		if($module != null) {
 	        			$moduleInstance = Vtiger_Module::getInstance($module);
@@ -1194,7 +1315,17 @@ class Common_Install_Wizard_Utils {
 		
 		return $result;
 	}
-	
+
+	public static function getMySQLVersion($serverInfo) {
+		if(!is_array($serverInfo)) {
+			$version = explode('-',$serverInfo);
+			$mysql_server_version=$version[0];
+		} else {
+			$mysql_server_version = $serverInfo['version'];
+		}
+		return $mysql_server_version;
+	}
+
 }
 
 //Function used to execute the query and display the success/failure of the query

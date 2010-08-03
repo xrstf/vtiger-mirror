@@ -797,7 +797,7 @@ function getListViewEntries($focus, $module,$list_result,$navigation_array,$rela
 								$contact_name = getFullNameFromQResult($list_result,$i-1,"Contacts");
 								$value="";
 								//Added to get the contactname for activities custom view - t=2190
-								if($contact_id != '' && $contact_name == '') {
+								if($contact_id != '' && !empty($contact_name)) {
 									$contact_name = getContactName($contact_id);
 								}
 								if(($contact_name != "") && ($contact_id !='NULL')) {
@@ -1504,7 +1504,7 @@ function getValue($field_result, $list_result,$fieldname,$focus,$module,$entity_
 		if(($is_admin==false && $profileGlobalPermission[1] == 1 && $profileGlobalPermission[2] == 1) && $temp_val != '')
 		{	
 			$temp_acttype = $adb->query_result($list_result,$list_result_count,'activitytype');
-			if(($temp_acttype != 'task') && $fieldname =="taskstatus")
+			if(($temp_acttype != 'Task') && $fieldname =="taskstatus")
 				$temptable = "eventstatus";
 			else
 				$temptable = $fieldname;
@@ -1889,7 +1889,12 @@ function getValue($field_result, $list_result,$fieldname,$focus,$module,$entity_
 	}
 	//added for asterisk integration
 	elseif($uitype == 11){
-		$value = "<a href='javascript:;' onclick='startCall(&quot;$temp_val&quot;, &quot;$entity_id&quot;)'>".$temp_val."</a>";
+		// Fix added for Trac Id: 6139
+		if(vtlib_isModuleActive('PBXManager')) {
+			$value = "<a href='javascript:;' onclick='startCall(&quot;$temp_val&quot;, &quot;$entity_id&quot;)'>".$temp_val."</a>";
+		} else {
+			$value = $temp_val;
+		}
 	}
 	//asterisk changes end here
 	//Added for email status tracking
@@ -3067,7 +3072,7 @@ function AlphabeticalSearch($module,$action,$fieldname,$query,$type,$popuptype='
 
 	for($var='A',$i =1;$i<=26;$i++,$var++)
 	// Mike Crowe Mod --------------------------------------------------------added groupid to url
-		$list .= '<td class="searchAlph" id="alpha_'.$i.'" align="center" onClick=\'alphabetic("'.$module.'","gname='.$groupid.'&query='.$query.'&search_field='.$fieldname.'&searchtype=BasicSearch&type=alpbt&search_text='.$var.$flag.$popuptypevalue.$returnvalue.$append_url.'","alpha_'.$i.'")\'>'.$var.'</td>';
+		$list .= '<td class="searchAlph" id="alpha_'.$i.'" align="center" onClick=\'alphabetic("'.$module.'","gname='.$groupid.'&query='.$query.'&search_field='.$fieldname.'&searchtype=BasicSearch&operator=s&type=alpbt&search_text='.$var.$flag.$popuptypevalue.$returnvalue.$append_url.'","alpha_'.$i.'")\'>'.$var.'</td>';
 
 	$log->debug("Exiting AlphabeticalSearch method ...");
 	return $list;

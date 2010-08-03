@@ -1898,7 +1898,7 @@ $log->info("in getOldFileName  ".$notesid);
 		        $ui10_modules_query = $adb->pquery("SELECT relmodule FROM vtiger_fieldmodulerel WHERE fieldid=?",array($field_id));
 		        
 		       if($adb->num_rows($ui10_modules_query)>0){
-			        $query.= " left join vtiger_crmentity as vtiger_crmentityRel$module on vtiger_crmentityRel$module.crmid = $tab_name.$field_name and vtiger_crmentityRel$module.deleted=0";
+			        $query.= " left join vtiger_crmentity as vtiger_crmentityRel$module$i on vtiger_crmentityRel$module$i.crmid = $tab_name.$field_name and vtiger_crmentityRel$module$i.deleted=0";
 			        for($j=0;$j<$adb->num_rows($ui10_modules_query);$j++){
 			        	$rel_mod = $adb->query_result($ui10_modules_query,$j,'relmodule');
 			        	$rel_obj = CRMEntity::getInstance($rel_mod);
@@ -1906,7 +1906,7 @@ $log->info("in getOldFileName  ".$notesid);
 						
 						$rel_tab_name = $rel_obj->table_name;
 						$rel_tab_index = $rel_obj->table_index;
-				        $query.= " left join $rel_tab_name as ".$rel_tab_name."Rel$module on ".$rel_tab_name."Rel$module.$rel_tab_index = vtiger_crmentityRel$module.crmid";
+				        $query.= " left join $rel_tab_name as ".$rel_tab_name."Rel$module on ".$rel_tab_name."Rel$module.$rel_tab_index = vtiger_crmentityRel$module$i.crmid";
 			        }
 		       }
 	        }
@@ -1954,7 +1954,7 @@ $log->info("in getOldFileName  ".$notesid);
 		        $ui10_modules_query = $adb->pquery("SELECT relmodule FROM vtiger_fieldmodulerel WHERE fieldid=?",array($field_id));
 		        
 		       if($adb->num_rows($ui10_modules_query)>0){
-			        $query.= " left join vtiger_crmentity as vtiger_crmentityRel$secmodule on vtiger_crmentityRel$secmodule.crmid = $tab_name.$field_name and vtiger_crmentityRel$secmodule.deleted=0";
+			        $query.= " left join vtiger_crmentity as vtiger_crmentityRel$secmodule$i on vtiger_crmentityRel$secmodule$i.crmid = $tab_name.$field_name and vtiger_crmentityRel$secmodule$i.deleted=0";
 			        for($j=0;$j<$adb->num_rows($ui10_modules_query);$j++){
 			        	$rel_mod = $adb->query_result($ui10_modules_query,$j,'relmodule');
 			        	$rel_obj = CRMEntity::getInstance($rel_mod);
@@ -1962,7 +1962,7 @@ $log->info("in getOldFileName  ".$notesid);
 						
 						$rel_tab_name = $rel_obj->table_name;
 						$rel_tab_index = $rel_obj->table_index;
-				        $query.= " left join $rel_tab_name as ".$rel_tab_name."Rel$secmodule on ".$rel_tab_name."Rel$secmodule.$rel_tab_index = vtiger_crmentityRel$secmodule.crmid";
+				        $query.= " left join $rel_tab_name as ".$rel_tab_name."Rel$secmodule on ".$rel_tab_name."Rel$secmodule.$rel_tab_index = vtiger_crmentityRel$secmodule$i.crmid";
 			        }
 		       }
 	        }
@@ -1990,7 +1990,8 @@ $log->info("in getOldFileName  ".$notesid);
         {
               $sec_query .= " vtiger_groups.groupid in (". implode(",", $current_user_groups) .") or ";
         }
-        $sec_query .= " vtiger_groups.groupid in(select vtiger_tmp_read_group_sharing_per.sharedgroupid from vtiger_tmp_read_group_sharing_per where userid=".$current_user->id." and tabid=".$tabid."))) ";	
+        $sec_query .= " vtiger_groups.groupid in(select vtiger_tmp_read_group_sharing_per.sharedgroupid from vtiger_tmp_read_group_sharing_per where userid=".$current_user->id." and tabid=".$tabid."))) ";
+		return $sec_query;
 	}
 	
 	/*
@@ -2012,7 +2013,8 @@ $log->info("in getOldFileName  ".$notesid);
         {
               $sec_query .= " vtiger_groups$module.groupid in (". implode(",", $current_user_groups) .") or ";
         }
-        $sec_query .= " vtiger_groups$module.groupid in(select vtiger_tmp_read_group_sharing_per.sharedgroupid from vtiger_tmp_read_group_sharing_per where userid=".$current_user->id." and tabid=".$tabid."))) ";	
+        $sec_query .= " vtiger_groups$module.groupid in(select vtiger_tmp_read_group_sharing_per.sharedgroupid from vtiger_tmp_read_group_sharing_per where userid=".$current_user->id." and tabid=".$tabid."))) ";
+		return $sec_query;
 	}
 	
 	/*
@@ -2039,17 +2041,13 @@ $log->info("in getOldFileName  ".$notesid);
 			$condvalue = $tabname.".".$prifieldname;
 		}
 		$condition = " {$tmpname}.{$prifieldname} = {$condvalue} ";
-		$entity_check_query = " {$tmpname}.{$secfieldname} IN (SELECT crmid FROM vtiger_crmentity WHERE vtiger_crmentity.deleted=0 AND vtiger_crmentity.setype='{$secmodule}')";
 		$condition_secmod_table = " {$table_name}.{$column_name} = {$tmpname}.{$secfieldname} ";
 		if($tabname=='vtiger_crmentityrel'){
-			$condition = " ($condition OR {$tmpname}.{$secfieldname} = $condvalue)  and";
-			$entity_check_query = "({$entity_check_query} OR {$tmpname}.{$prifieldname} IN (SELECT crmid FROM vtiger_crmentity WHERE vtiger_crmentity.deleted=0 AND vtiger_crmentity.setype='{$secmodule}')) ";
-			$condition_secmod_table = "({$condition_secmod_table} OR {$table_name}.{$column_name} = {$tmpname}.{$prifieldname})";
-		} else {
-			$condition .= " and ";
+			$condition = " ($condition OR {$tmpname}.{$secfieldname} = $condvalue) ";
+			$condition_secmod_table = "({$condition_secmod_table})";
 		}
 
-		$query = " left join {$tabname} as {$tmpname} on {$condition}  {$entity_check_query}";
+		$query = " left join {$tabname} as {$tmpname} on {$condition}";
 		$query .= " LEFT JOIN {$table_name} ON {$condition_secmod_table}";
 		
 		return $query;
@@ -2372,5 +2370,20 @@ $log->info("in getOldFileName  ".$notesid);
 		}
 		return $query;
 	}
+
+	/*
+	 * Function to get the relation tables for related modules
+	 * @param String $secmodule - $secmodule secondary module name
+	 * @return Array returns the array with table names and fieldnames storing relations
+	 * between module and this module
+	 */
+	function setRelationTables($secmodule){
+		$rel_tables = array (
+			"Documents" => array("vtiger_senotesrel"=>array("crmid","notesid"),
+				$this->table_name=>$this->table_index),
+		);
+		return $rel_tables[$secmodule];
+	}
+
 }
 ?>

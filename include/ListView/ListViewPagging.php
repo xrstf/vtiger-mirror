@@ -69,7 +69,7 @@ if(!is_string($_SESSION[$currentModule.'_listquery'])){
 }else{
 	$list_query = $_SESSION[$currentModule.'_listquery'];
 }
-//echo mkCountQuery($list_query);
+
 $count_result = $adb->query(mkCountQuery($list_query));
 $noofrows = $adb->query_result($count_result,0,"count");
 

@@ -461,8 +461,6 @@ function getListViewCount(module,element,parentElement,url){
 		}
 	}else if(document.getElementById('globalSearchText') != null && 
 			typeof document.getElementById('globalSearchText') != 'undefined'){
-		alert(typeof document.getElementById('globalSearchText'));
-		console.log(document.getElementById('globalSearchText'));
 		var searchText = document.getElementById('globalSearchText').value;
 		searchURL = '&query=true&globalSearch=true&globalSearchText='+encodeURIComponent(searchText);
 	}

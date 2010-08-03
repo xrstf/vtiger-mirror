@@ -16,6 +16,13 @@ require_once("include/ListView/ListViewSession.php");
 require_once("include/ListView/RelatedListViewSession.php");
 require_once("include/DatabaseUtil.php");
 
+if(!function_exists('GetRelatedList')) {
+	function GetRelatedList($module,$relatedmodule,$focus,$query,$button,$returnset,$id='',
+			$edit_val='',$del_val='') {
+		return GetRelatedListBase($module, $relatedmodule, $focus, $query, $button, $returnset, $id, $edit_val, $del_val);
+	}
+}
+
 /** Function to get related list entries in detailed array format
   * @param $module -- modulename:: Type string
   * @param $relatedmodule -- relatedmodule:: Type string
@@ -30,7 +37,7 @@ require_once("include/DatabaseUtil.php");
   *
   */
 
-function GetRelatedList($module,$relatedmodule,$focus,$query,$button,$returnset,$id='',$edit_val='',$del_val='')
+function GetRelatedListBase($module,$relatedmodule,$focus,$query,$button,$returnset,$id='',$edit_val='',$del_val='')
 {
 	$log = LoggerManager::getLogger('account_list');
 	$log->debug("Entering GetRelatedList(".$module.",".$relatedmodule.",".get_class($focus).",".$query.",".$button.",".$returnset.",".$edit_val.",".$del_val.") method ...");
@@ -78,7 +85,7 @@ function GetRelatedList($module,$relatedmodule,$focus,$query,$button,$returnset,
 	//Retreive the list from Database
 	//Appending the security parameter Security fix by Don
 	if($relatedmodule != 'Products' && $relatedmodule != 'Faq' && $relatedmodule != 'PriceBook'
-			&& $relatedmodule != 'Vendors') {
+			&& $relatedmodule != 'Vendors' && $relatedmodule != 'Users') {
 		global $current_user;
 		$secQuery = getNonAdminAccessControlQuery($relatedmodule, $current_user);
 		if(strlen($secQuery) > 1) {

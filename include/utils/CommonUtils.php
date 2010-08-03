@@ -249,7 +249,7 @@ function from_html($string, $encode=true){
         global $toHtml;
         //if($encode && is_string($string))$string = html_entity_decode($string, ENT_QUOTES);
 	if(is_string($string)){
-		if(eregi('(script).*(/script)',$string))
+		if(preg_match('/(script).*(\/script)/i',$string))
 			$string=preg_replace(array('/</', '/>/', '/"/'), array('&lt;', '&gt;', '&quot;'), $string);
 		//$string = str_replace(array_values($toHtml), array_keys($toHtml), $string);
 	}
@@ -260,7 +260,7 @@ function from_html($string, $encode=true){
 function fck_from_html($string)
 {
 	if(is_string($string)){
-		if(eregi('(script).*(/script)',$string))
+		if(preg_match('/(script).*(\/script)/i',$string))
 			$string=str_replace('script', '', $string);
 	}
 	return $string;
@@ -953,7 +953,7 @@ function getDisplayDate($cur_date_val)
 	}
 
 		$date_value = explode(' ',$cur_date_val);
-		list($y,$m,$d) = split('-',$date_value[0]);
+		list($y,$m,$d) = explode('-',$date_value[0]);
 		if($dat_fmt == 'dd-mm-yyyy')
 		{
 			$display_date = $d.'-'.$m.'-'.$y;
@@ -976,6 +976,32 @@ function getDisplayDate($cur_date_val)
 	$log->debug("Exiting getDisplayDate method ...");
 	return $display_date;
  			
+}
+
+/**
+ * This function returns the date in user specified format.
+ * limitation is that mm-dd-yyyy and dd-mm-yyyy will be considered same by this API.
+ * As in the date value is on mm-dd-yyyy and user date format is dd-mm-yyyy then the mm-dd-yyyy
+ * value will be return as the API will be considered as considered as in same format.
+ * this due to the fact that this API tries to consider the where given date is in user date
+ * format. we need a better gauge for this case.
+ * @global Users $current_user
+ * @param Date $cur_date_val the date which should a changed to user date format.
+ * @return Date
+ */
+function getValidDisplayDate($cur_date_val) {
+	global $current_user;
+	$dat_fmt = $current_user->date_format;
+	if($dat_fmt == '') {
+		$dat_fmt = 'dd-mm-yyyy';
+	}
+	$date_value = explode(' ',$cur_date_val);
+	list($y,$m,$d) = explode('-',$date_value[0]);
+	list($fy, $fm, $fd) = explode('-', $dat_fmt);
+	if((strlen($fy) == 4 && strlen($y) == 4) || (strlen($fd) == 4 && strlen($d) == 4)) {
+		return $cur_date_val;
+	}
+	return getDisplayDate($cur_date_val);
 }
 
 /** This function returns the date in user specified format.
@@ -2220,7 +2246,7 @@ function sendNotificationToOwner($module,$focus)
 
 		$description .= '<br><br>'.$app_strings['MSG_THANK_YOU'].',<br>'.$current_user->user_name.'.<br>';
 		$status = send_mail($module,$ownermailid,$current_user->user_name,'',$subject,$description);
-		
+
 		$log->debug("Exiting sendNotificationToOwner method ...");
 		return $status;
 	}
@@ -3060,11 +3086,16 @@ function getUItype($module,$columnname)
 {
         global $log;
         $log->debug("Entering getUItype(".$module.") method ...");
-	//To find tabid for this module
-	$tabid=getTabid($module);
+		$tabIdList = array();
+		//To find tabid for this module
+		$tabIdList[] = getTabid($module);
         global $adb;
-        $sql = "select uitype from vtiger_field where tabid=? and columnname=?";
-        $result = $adb->pquery($sql, array($tabid, $columnname));
+		if($module == 'Calendar') {
+			$tabIdList[] = getTabid('Events');
+		}
+        $sql = "select uitype from vtiger_field where tabid IN (".generateQuestionMarks($tabIdList).
+				") and columnname=?";
+        $result = $adb->pquery($sql, array($tabIdList, $columnname));
         $uitype =  $adb->query_result($result,0,"uitype");
         $log->debug("Exiting getUItype method ...");
         return $uitype;

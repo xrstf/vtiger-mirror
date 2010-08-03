@@ -122,15 +122,13 @@ function vtws_getId($objId, $elemId){
 	return $objId."x".$elemId;
 }
 
-function getEmailFieldId($meta, $entityId,$fields){
+function getEmailFieldId($meta, $entityId){
 	global $adb;
-	if(sizeof($fields)>0){
-		return $meta->getFieldIdFromFieldName($fields[0]);
-	}
 	//no email field accessible in the module. since its only association pick up the field any way.
 	$query="SELECT fieldid,fieldlabel,columnname FROM vtiger_field WHERE tabid=? 
 		and uitype=13 and presence in (0,2)";
-	$result = $adb->pquery($query, array($meta->getEntityId()));
+	$result = $adb->pquery($query, array($meta->getTabId()));
+	
 	//pick up the first field.
 	$fieldId = $adb->query_result($result,0,'fieldid');
 	return $fieldId;
@@ -697,5 +695,60 @@ function vtws_saveLeadRelatedCampaigns($leadId, $relatedId) {
 	return true;
 }
 
+function vtws_transferOwnership($ownerId, $newOwnerId) {
+	$db = PearDatabase::getInstance();
+	//Updating the smcreatorid,smownerid, modifiedby in vtiger_crmentity
+	$sql = "update vtiger_crmentity set smcreatorid=? where smcreatorid=?";
+	$db->pquery($sql, array($newOwnerId, $ownerId));
+	$sql = "update vtiger_crmentity set modifiedby=? where modifiedby=?";
+	$db->pquery($sql, array($newOwnerId, $ownerId));
+
+	//deleting from vtiger_tracker
+	$sql = "delete from vtiger_tracker where user_id=?";
+	$db->pquery($sql, array($ownerId));
+
+	//updating created by in vtiger_lar
+	$sql = "update vtiger_lar set createdby=? where createdby=?";
+	$db->pquery($sql, array($newOwnerId, $ownerId));
+
+	//updating the vtiger_import_maps
+	$sql ="update vtiger_import_maps set assigned_user_id=? where assigned_user_id=?";
+	$db->pquery($sql, array($newOwnerId, $ownerId));
+
+	//update assigned_user_id in vtiger_files
+	$sql ="update vtiger_files set assigned_user_id=? where assigned_user_id=?";
+	$db->pquery($sql, array($newOwnerId, $ownerId));
+
+	//update assigned_user_id in vtiger_users_last_import
+	$sql = "update vtiger_users_last_import set assigned_user_id=? where assigned_user_id=?";
+	$db->pquery($sql, array($newOwnerId, $ownerId));
+
+	//updating user_id in vtiger_moduleowners
+	$sql = "update vtiger_moduleowners set user_id=? where user_id=?";
+	$db->pquery($sql, array($newOwnerId, $ownerId));
+
+	//delete from vtiger_users to group vtiger_table
+	$sql = "delete from vtiger_user2role where userid=?";
+	$db->pquery($sql, array($ownerId));
+
+	//delete from vtiger_users to vtiger_role vtiger_table
+	$sql = "delete from vtiger_users2group where userid=?";
+	$db->pquery($sql, array($ownerId));
+
+	$sql = "select tabid,fieldname,tablename,columnname from vtiger_field left join ".
+	"vtiger_fieldmodulerel on vtiger_field.fieldid=vtiger_fieldmodulerel.fieldid where uitype ".
+	"in (52,53,77,101) or (uitype=10 and relmodule='Users')";
+	$result = $db->pquery($sql, array());
+	$it = new SqlResultIterator($db, $result);
+	$columnList = array();
+	foreach ($it as $row) {
+		$column = $row->tablename.'.'.$row->columnname;
+		if(!in_array($column, $columnList)) {
+			$columnList[] = $column;
+			$sql = "update $row->tablename set $row->columnname=? where $row->columnname=?";
+			$db->pquery($sql, array($newOwnerId, $ownerId));
+		}
+	}
+}
 
 ?>

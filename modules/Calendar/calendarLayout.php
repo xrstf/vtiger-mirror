@@ -1654,8 +1654,7 @@ function getTodoList(& $calendar,$start_date,$end_date,$info='')
         }
 	
 	$group_cond = '';
-	$count_res = $adb->pquery(mkCountQuery($query), $params);
-   	$group_cond .= " ORDER BY vtiger_activity.date_start,vtiger_activity.time_start ASC";
+	$group_cond .= " ORDER BY vtiger_activity.date_start,vtiger_activity.time_start ASC";
 	if(isset($_REQUEST['start']) && $_REQUEST['start'] != '')
 		$start = vtlib_purify($_REQUEST['start']);
 	else 
@@ -1663,7 +1662,8 @@ function getTodoList(& $calendar,$start_date,$end_date,$info='')
 
 //T6477 changes
 	if(PerformancePrefs::getBoolean('LISTVIEW_COMPUTE_PAGE_COUNT', false) === true){
-		  $total_rec_count = $adb->query_result($count_res,0,'count');
+		$count_res = $adb->pquery(mkCountQuery($query), $params);
+   		$total_rec_count = $adb->query_result($count_res,0,'count');
 	}else{
 		$total_rec_count = null;
 	}
@@ -1876,7 +1876,6 @@ function constructEventListView(& $cal,$entry_list,$navigation_array='')
                         <tr>";
 	$header_rows = count($header);
 
-	//$navigationOutput = getTableHeaderNavigation($navigation_array, $url_string,"Calendar","index");
 	$navigationOutput = getTableHeaderSimpleNavigation($navigation_array, $url_string,"Calendar","index");
 
 	if($navigationOutput != '')
@@ -1932,7 +1931,7 @@ function constructEventListView(& $cal,$entry_list,$navigation_array='')
 			//checking permission for Create/Edit Operation
 			if(isPermitted("Calendar","EditView") == "yes")
                         {
-                                $list_view .="<td class='small' align='left' nowrap='nowrap'>".$app_strings['LBL_YOU_CAN_CREATE']."&nbsp;".$app_strings['LBL_AN']."&nbsp;".$app_strings['Event']."&nbsp;".$app_strings['LBL_NOW'].".<br>
+                                $list_view .="<td class='small' align='left' nowrap='nowrap'>".$app_strings['LBL_YOU_CAN_CREATE']."&nbsp;".$app_strings['LBL_AN']."&nbsp;".$app_strings['Event']."&nbsp;".$app_strings['LBL_NOW'].".&nbsp;".$app_strings['LBL_CLICK_THE_LINK'].":<br>
 					&nbsp;&nbsp;-<a href='javascript:void(0);' onClick='gshow(\"addEvent\",\"Call\",\"".$temp_date."\",\"".$endtemp_date."\",\"".$time_arr['starthour']."\",\"".$time_arr['startmin']."\",\"".$time_arr['startfmt']."\",\"".$time_arr['endhour']."\",\"".$time_arr['endmin']."\",\"".$time_arr['endfmt']."\",\"listview\",\"event\");'>".$app_strings['LBL_CREATE']."&nbsp;".$app_strings['LBL_AN']."&nbsp;".$app_strings['Event']."</a><br>
 					</td>";
 			}

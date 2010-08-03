@@ -153,7 +153,7 @@ class Potentials extends CRMEntity {
         	$tab_id = getTabid("Potentials");
 		$log->debug("Entering create_list_query(".$order_by.",". $where.") method ...");
 		// Determine if the vtiger_account name is present in the where clause.
-		$account_required = ereg("accounts\.name", $where);
+		$account_required = preg_match("/accounts\.name/", $where);
 
 		if($account_required)
 		{
@@ -200,6 +200,7 @@ class Potentials extends CRMEntity {
 				inner join vtiger_crmentity on vtiger_crmentity.crmid=vtiger_potential.potentialid 
 				LEFT JOIN vtiger_users ON vtiger_crmentity.smownerid=vtiger_users.id
 				LEFT JOIN vtiger_account on vtiger_potential.related_to=vtiger_account.accountid
+				LEFT JOIN vtiger_contactdetails on vtiger_potential.related_to=vtiger_contactdetails.contactid
 				LEFT JOIN vtiger_potentialscf on vtiger_potentialscf.potentialid=vtiger_potential.potentialid 
                 LEFT JOIN vtiger_groups
         	        ON vtiger_groups.groupid = vtiger_crmentity.smownerid

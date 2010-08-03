@@ -156,7 +156,7 @@ class Users {
 	var $record_id;
 	var $new_schema = true;
 
-	var $DEFAULT_PASSWORD_CRYPT_TYPE = 'BLOWFISH'; //'MD5';
+	var $DEFAULT_PASSWORD_CRYPT_TYPE; //'BLOWFISH', /* before PHP5.3*/ MD5;
 
 	/** constructor function for the main user class
             instantiates the Logger class and PearDatabase Class	
@@ -167,6 +167,8 @@ class Users {
 		$this->log = LoggerManager::getLogger('user');
 		$this->log->debug("Entering Users() method ...");
 		$this->db = PearDatabase::getInstance();
+		$this->DEFAULT_PASSWORD_CRYPT_TYPE = (version_compare(PHP_VERSION, '5.3.0') >= 0)?
+				'PHP5.3MD5': 'MD5';
 		$this->log->debug("Exiting Users() method ...");
 	}
 
@@ -287,14 +289,17 @@ class Users {
 		// For more details on salt format look at: http://in.php.net/crypt
 		if($crypt_type == 'MD5') {
 			$salt = '$1$' . $salt . '$';
-		} else if($crypt_type == 'BLOWFISH') {
+		} elseif($crypt_type == 'BLOWFISH') {
 			$salt = '$2$' . $salt . '$';
+		} elseif($crypt_type == 'PHP5.3MD5') {
+			//only change salt for php 5.3 or higher version for backward
+			//compactibility.
+			//crypt API is lot stricter in taking the value for salt.
+			$salt = '$1$' . str_pad($salt, 9, '0');
 		}
 
-		$encrypted_password = crypt($user_password, $salt);	
-
+		$encrypted_password = crypt($user_password, $salt);
 		return $encrypted_password;
-
 	}
 
 	
@@ -715,6 +720,8 @@ class Users {
 		}
 		require_once('modules/Users/CreateUserPrivilegeFile.php');
 		createUserPrivilegesfile($this->id);
+		unset($_SESSION['next_reminder_interval']);
+		unset($_SESSION['next_reminder_time']);
 		if($insertion_mode != 'edit'){
 			$this->createAccessKey();
 		}
@@ -1309,6 +1316,8 @@ class Users {
 	{
 		global $adb;
 		if($prev_reminder_interval != $this->column_fields['reminder_interval'] ){
+			unset($_SESSION['next_reminder_interval']);
+			unset($_SESSION['next_reminder_time']);
 			$set_reminder_next = date('Y-m-d H:i');
 			// NOTE date_entered has CURRENT_TIMESTAMP constraint, so we need to reset when updating the table
 			$adb->pquery("UPDATE vtiger_users SET reminder_next_time=?, date_entered=? WHERE id=?",array($set_reminder_next, $this->column_fields['date_entered'], $this->id));
@@ -1342,5 +1351,25 @@ class Users {
 			$this->db->pquery($sql4, array($attachmentId));			
 		}
 	}
+
+	/** Function to delete an entity with given Id */
+	function trash($module, $id) {
+		global $log, $current_user;
+
+		$this->mark_deleted($id);
+	}
+
+	/**
+	 * This function should be overridden in each module.  It marks an item as deleted.
+	 * @param <type> $id
+	 */
+	function mark_deleted($id) {
+		global $log, $current_user, $adb;
+		$date_var = date('Y-m-d H:i:s');
+		$query = "UPDATE vtiger_users set status=?,date_modified=?,modified_user_id=? where id=?";
+		$adb->pquery($query, array('Inactive', $adb->formatDate($date_var, true),
+			$current_user->id, $id), true,"Error marking record deleted: ");
+	}
+
 }
 ?>

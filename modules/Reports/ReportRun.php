@@ -349,6 +349,9 @@ class ReportRun extends CRMEntity
 		        }
 				
 			}
+			if($fieldname == 'creator'){
+				$querycolumn .= "case when (vtiger_usersModComments.user_name not like '' and vtiger_crmentity.crmid!='') then vtiger_usersModComments.user_name end as 'ModComments_Creator'";
+			}
 		}
 		return $querycolumn;
 	}
@@ -627,9 +630,10 @@ class ReportRun extends CRMEntity
 		
 		$advfiltergroupssql = "SELECT * FROM vtiger_relcriteria_grouping WHERE queryid = ? ORDER BY groupid";
 		$advfiltergroups = $adb->pquery($advfiltergroupssql, array($reportid));
-		
+		$numgrouprows = $adb->num_rows($advfiltergroups);
+		$groupctr =0;
 		while($advfiltergroup = $adb->fetch_array($advfiltergroups)) {
-		
+			$groupctr++;
 			$groupid = $advfiltergroup["groupid"];
 			$groupcondition = $advfiltergroup["group_condition"];
 			
@@ -645,9 +649,9 @@ class ReportRun extends CRMEntity
 			if($noofrows > 0) {
 				
 				$advfiltergroupsql = "";
-				
+				$columnctr = 0;
 				while($advfilterrow = $adb->fetch_array($result)) {
-					
+					$columnctr++;
 					$fieldcolname = $advfilterrow["columnname"];
 					$comparator = $advfilterrow["comparator"];
 					$value = $advfilterrow["value"];
@@ -729,7 +733,7 @@ class ReportRun extends CRMEntity
 						}
 						
 						$advfiltergroupsql .= $fieldvalue;
-						if($columncondition != NULL && $columncondition != '') {
+						if($columncondition != NULL && $columncondition != '' && $noofrows > $columnctr ) {
 							$advfiltergroupsql .= ' '.$columncondition.' ';
 						}	
 					}
@@ -738,9 +742,8 @@ class ReportRun extends CRMEntity
 				
 				if (trim($advfiltergroupsql) != "") {
 					$advfiltergroupsql =  "( $advfiltergroupsql ) ";
-					
-					if($groupcondition != NULL && $groupcondition != '') {
-						$advfiltergroupsql .=  $groupcondition . ' ';
+					if($groupcondition != NULL && $groupcondition != '' && $numgrouprows > $groupctr) {
+						$advfiltergroupsql .= ' '. $groupcondition . ' ';
 					}
 					
 					$advfiltersql .= $advfiltergroupsql;
@@ -1207,6 +1210,15 @@ class ReportRun extends CRMEntity
 				}
 			}
 		}
+
+		if(in_array($this->primarymodule, array('Invoice', 'Quotes', 'SalesOrder', 'PurchaseOrder')) ) {
+			$instance = CRMEntity::getInstance($this->primarymodule);
+			$grouplist[$instance->table_index] = $instance->table_name.'.'.$instance->table_index;
+			$grouplist['subject'] = $instance->table_name.'.subject';
+			$this->groupbylist[$fieldcolname] = $instance->table_name.'.'.$instance->table_index;
+			$this->groupbylist['subject'] = $instance->table_name.'.subject';
+		}
+
 		// Save the information
 		$this->_groupinglist = $grouplist;
 		
@@ -1295,7 +1307,7 @@ class ReportRun extends CRMEntity
 	 *  this returns join query for the given module
 	 */
 
-	function getReportsQuery($module)
+	function getReportsQuery($module, $type='')
 	{
 		global $log, $current_user;
 		$secondary_module ="'";
@@ -1446,11 +1458,13 @@ class ReportRun extends CRMEntity
 			$query = "from vtiger_quotes 
 				inner join vtiger_crmentity on vtiger_crmentity.crmid=vtiger_quotes.quoteid 
 				inner join vtiger_quotesbillads on vtiger_quotes.quoteid=vtiger_quotesbillads.quotebilladdressid 
-				inner join vtiger_quotesshipads on vtiger_quotes.quoteid=vtiger_quotesshipads.quoteshipaddressid  
-				left join vtiger_inventoryproductrel as vtiger_inventoryproductrelQuotes on vtiger_quotes.quoteid = vtiger_inventoryproductrelQuotes.id  
+				inner join vtiger_quotesshipads on vtiger_quotes.quoteid=vtiger_quotesshipads.quoteshipaddressid";
+			if($type !== 'COLUMNSTOTOTAL') {
+				$query .= " left join vtiger_inventoryproductrel as vtiger_inventoryproductrelQuotes on vtiger_quotes.quoteid = vtiger_inventoryproductrelQuotes.id
 				left join vtiger_products as vtiger_productsQuotes on vtiger_productsQuotes.productid = vtiger_inventoryproductrelQuotes.productid  
-				left join vtiger_service as vtiger_serviceQuotes on vtiger_serviceQuotes.serviceid = vtiger_inventoryproductrelQuotes.productid  
-				left join vtiger_quotescf on vtiger_quotes.quoteid = vtiger_quotescf.quoteid 
+				left join vtiger_service as vtiger_serviceQuotes on vtiger_serviceQuotes.serviceid = vtiger_inventoryproductrelQuotes.productid";
+			}
+			$query .= " left join vtiger_quotescf on vtiger_quotes.quoteid = vtiger_quotescf.quoteid
 				left join vtiger_groups as vtiger_groupsQuotes on vtiger_groupsQuotes.groupid = vtiger_crmentity.smownerid
 				left join vtiger_users as vtiger_usersQuotes on vtiger_usersQuotes.id = vtiger_crmentity.smownerid
 				left join vtiger_groups on vtiger_groups.groupid = vtiger_crmentity.smownerid
@@ -1469,11 +1483,13 @@ class ReportRun extends CRMEntity
 			$query = "from vtiger_purchaseorder 
 				inner join vtiger_crmentity on vtiger_crmentity.crmid=vtiger_purchaseorder.purchaseorderid 
 				inner join vtiger_pobillads on vtiger_purchaseorder.purchaseorderid=vtiger_pobillads.pobilladdressid 
-				inner join vtiger_poshipads on vtiger_purchaseorder.purchaseorderid=vtiger_poshipads.poshipaddressid 
-				left join vtiger_inventoryproductrel as vtiger_inventoryproductrelPurchaseOrder on vtiger_purchaseorder.purchaseorderid = vtiger_inventoryproductrelPurchaseOrder.id  
+				inner join vtiger_poshipads on vtiger_purchaseorder.purchaseorderid=vtiger_poshipads.poshipaddressid";
+			if($type !== 'COLUMNSTOTOTAL') {
+				$query .= " left join vtiger_inventoryproductrel as vtiger_inventoryproductrelPurchaseOrder on vtiger_purchaseorder.purchaseorderid = vtiger_inventoryproductrelPurchaseOrder.id
 				left join vtiger_products as vtiger_productsPurchaseOrder on vtiger_productsPurchaseOrder.productid = vtiger_inventoryproductrelPurchaseOrder.productid  
-				left join vtiger_service as vtiger_servicePurchaseOrder on vtiger_servicePurchaseOrder.serviceid = vtiger_inventoryproductrelPurchaseOrder.productid  
-				left join vtiger_purchaseordercf on vtiger_purchaseorder.purchaseorderid = vtiger_purchaseordercf.purchaseorderid  
+				left join vtiger_service as vtiger_servicePurchaseOrder on vtiger_servicePurchaseOrder.serviceid = vtiger_inventoryproductrelPurchaseOrder.productid";
+			}
+			$query .= " left join vtiger_purchaseordercf on vtiger_purchaseorder.purchaseorderid = vtiger_purchaseordercf.purchaseorderid
 				left join vtiger_groups as vtiger_groupsPurchaseOrder on vtiger_groupsPurchaseOrder.groupid = vtiger_crmentity.smownerid
 				left join vtiger_users as vtiger_usersPurchaseOrder on vtiger_usersPurchaseOrder.id = vtiger_crmentity.smownerid 
 				left join vtiger_groups on vtiger_groups.groupid = vtiger_crmentity.smownerid
@@ -1490,11 +1506,13 @@ class ReportRun extends CRMEntity
 			$query = "from vtiger_invoice 
 				inner join vtiger_crmentity on vtiger_crmentity.crmid=vtiger_invoice.invoiceid 
 				inner join vtiger_invoicebillads on vtiger_invoice.invoiceid=vtiger_invoicebillads.invoicebilladdressid 
-				inner join vtiger_invoiceshipads on vtiger_invoice.invoiceid=vtiger_invoiceshipads.invoiceshipaddressid 
-				left join vtiger_inventoryproductrel as vtiger_inventoryproductrelInvoice on vtiger_invoice.invoiceid = vtiger_inventoryproductrelInvoice.id  
-				left join vtiger_products as vtiger_productsInvoice on vtiger_productsInvoice.productid = vtiger_inventoryproductrelInvoice.productid  
-				left join vtiger_service as vtiger_serviceInvoice on vtiger_serviceInvoice.serviceid = vtiger_inventoryproductrelInvoice.productid  
-				left join vtiger_salesorder as vtiger_salesorderInvoice on vtiger_salesorderInvoice.salesorderid=vtiger_invoice.salesorderid
+				inner join vtiger_invoiceshipads on vtiger_invoice.invoiceid=vtiger_invoiceshipads.invoiceshipaddressid";
+			if($type !== 'COLUMNSTOTOTAL') {
+				$query .=" left join vtiger_inventoryproductrel as vtiger_inventoryproductrelInvoice on vtiger_invoice.invoiceid = vtiger_inventoryproductrelInvoice.id
+					left join vtiger_products as vtiger_productsInvoice on vtiger_productsInvoice.productid = vtiger_inventoryproductrelInvoice.productid
+					left join vtiger_service as vtiger_serviceInvoice on vtiger_serviceInvoice.serviceid = vtiger_inventoryproductrelInvoice.productid";
+			}
+			$query .= " left join vtiger_salesorder as vtiger_salesorderInvoice on vtiger_salesorderInvoice.salesorderid=vtiger_invoice.salesorderid
 				left join vtiger_invoicecf on vtiger_invoice.invoiceid = vtiger_invoicecf.invoiceid 
 				left join vtiger_groups as vtiger_groupsInvoice on vtiger_groupsInvoice.groupid = vtiger_crmentity.smownerid
 				left join vtiger_users as vtiger_usersInvoice on vtiger_usersInvoice.id = vtiger_crmentity.smownerid
@@ -1511,11 +1529,13 @@ class ReportRun extends CRMEntity
 			$query = "from vtiger_salesorder 
 				inner join vtiger_crmentity on vtiger_crmentity.crmid=vtiger_salesorder.salesorderid 
 				inner join vtiger_sobillads on vtiger_salesorder.salesorderid=vtiger_sobillads.sobilladdressid 
-				inner join vtiger_soshipads on vtiger_salesorder.salesorderid=vtiger_soshipads.soshipaddressid 
-				left join vtiger_inventoryproductrel as vtiger_inventoryproductrelSalesOrder on vtiger_salesorder.salesorderid = vtiger_inventoryproductrelSalesOrder.id  
+				inner join vtiger_soshipads on vtiger_salesorder.salesorderid=vtiger_soshipads.soshipaddressid";
+			if($type !== 'COLUMNSTOTOTAL') {
+				$query .= " left join vtiger_inventoryproductrel as vtiger_inventoryproductrelSalesOrder on vtiger_salesorder.salesorderid = vtiger_inventoryproductrelSalesOrder.id
 				left join vtiger_products as vtiger_productsSalesOrder on vtiger_productsSalesOrder.productid = vtiger_inventoryproductrelSalesOrder.productid  
-				left join vtiger_service as vtiger_serviceSalesOrder on vtiger_serviceSalesOrder.serviceid = vtiger_inventoryproductrelSalesOrder.productid  
-				left join vtiger_contactdetails as vtiger_contactdetailsSalesOrder on vtiger_contactdetailsSalesOrder.contactid = vtiger_salesorder.contactid 
+				left join vtiger_service as vtiger_serviceSalesOrder on vtiger_serviceSalesOrder.serviceid = vtiger_inventoryproductrelSalesOrder.productid";
+			}
+			$query .=" left join vtiger_contactdetails as vtiger_contactdetailsSalesOrder on vtiger_contactdetailsSalesOrder.contactid = vtiger_salesorder.contactid
 				left join vtiger_quotes as vtiger_quotesSalesOrder on vtiger_quotesSalesOrder.quoteid = vtiger_salesorder.quoteid				
 				left join vtiger_account as vtiger_accountSalesOrder on vtiger_accountSalesOrder.accountid = vtiger_salesorder.accountid
 				left join vtiger_potential as vtiger_potentialRelSalesOrder on vtiger_potentialRelSalesOrder.potentialid = vtiger_salesorder.potentialid 
@@ -1616,7 +1636,7 @@ class ReportRun extends CRMEntity
 			$wheresql .= " and ".$advfiltersql;
 		}
 
-		$reportquery = $this->getReportsQuery($this->primarymodule);
+		$reportquery = $this->getReportsQuery($this->primarymodule, $type);
 
 		// If we don't have access to any columns, let us select one column and limit result to shown we have not results
                 // Fix for: http://trac.vtiger.com/cgi-bin/trac.cgi/ticket/4758 - Prasad
@@ -1636,18 +1656,14 @@ class ReportRun extends CRMEntity
 				$selectedcolumns = "''"; // "''" to get blank column name
                                 $allColumnsRestricted = true;
                         }
-			
+			if(in_array($this->primarymodule, array('Invoice', 'Quotes',
+					'SalesOrder', 'PurchaseOrder'))) {
+				$selectedcolumns = ' distinct '. $selectedcolumns;
+			}
 			$reportquery = "select ".$selectedcolumns." ".$reportquery." ".$wheresql;
 		}
 		$reportquery = listQueryNonAdminChange($reportquery, $this->primarymodule);
 		
-		$sec_modules = split(":",$this->secondarymodule);
-		foreach($sec_modules as $i=>$key) {
-			if(!empty($key)) {
-				$reportquery = listQueryNonAdminChange($reportquery, $key,$key);
-			}
-		}
-
 		if(trim($groupsquery) != "" && empty($type))
 		{
 			$reportquery .= " order by ".$groupsquery;
@@ -2115,6 +2131,112 @@ class ReportRun extends CRMEntity
 
 				return $arr_val;
 			}
+		}elseif($outputformat == "TOTALXLS")
+		{
+				$escapedchars = Array('_SUM','_AVG','_MIN','_MAX');
+				$totalpdf=array();
+				$sSQL = $this->sGetSQLforReport($this->reportid,$filterlist,"COLUMNSTOTOTAL");
+				if(isset($this->totallist))
+				{
+						if($sSQL != "")
+						{
+								$result = $adb->query($sSQL);
+								$y=$adb->num_fields($result);
+								$custom_field_values = $adb->fetch_array($result);
+
+								foreach($this->totallist as $key=>$value)
+								{
+										$fieldlist = explode(":",$key);
+										$mod_query = $adb->pquery("SELECT distinct(tabid) as tabid, uitype as uitype from vtiger_field where tablename = ? and columnname=?",array($fieldlist[1],$fieldlist[2]));
+										if($adb->num_rows($mod_query)>0){
+												$module_name = getTabName($adb->query_result($mod_query,0,'tabid'));
+												$fieldlabel = trim(str_replace($escapedchars," ",$fieldlist[3]));
+												$fieldlabel = str_replace("_", " ", $fieldlabel);
+												if($module_name){
+														$field = getTranslatedString($module_name)." ".getTranslatedString($fieldlabel,$module_name);
+												} else {
+													$field = getTranslatedString($module_name)." ".getTranslatedString($fieldlabel);
+												}
+										}
+										$uitype_arr[str_replace($escapedchars," ",$module_name."_".$fieldlist[3])] = $adb->query_result($mod_query,0,"uitype");
+										$totclmnflds[str_replace($escapedchars," ",$module_name."_".$fieldlist[3])] = $field;
+								}
+								for($i =0;$i<$y;$i++)
+								{
+										$fld = $adb->field_name($result, $i);
+										$keyhdr[$fld->name] = $custom_field_values[$i];
+								}
+
+								$rowcount=0;
+								foreach($totclmnflds as $key=>$value)
+								{
+										$col_header = trim(str_replace($modules," ",$value));
+										$fld_name_1 = $this->primarymodule . "_" . trim($value);
+										$fld_name_2 = $this->secondarymodule . "_" . trim($value);
+										if($uitype_arr[$value]==71 || in_array($fld_name_1,$this->convert_currency) || in_array($fld_name_1,$this->append_currency_symbol_to_value)
+														|| in_array($fld_name_2,$this->convert_currency) || in_array($fld_name_2,$this->append_currency_symbol_to_value)) {
+												$col_header .= " (".$app_strings['LBL_IN']." ".$current_user->currency_symbol.")";
+												$convert_price = true;
+										} else{
+												$convert_price = false;
+										}
+										$value = trim($key);
+										$arraykey = $value.'_SUM';
+										if(isset($keyhdr[$arraykey]))
+										{
+												if($convert_price)
+														$conv_value = convertFromMasterCurrency($keyhdr[$arraykey],$current_user->conv_rate);
+												else
+														$conv_value = $keyhdr[$arraykey];
+												$totalpdf[$rowcount][$arraykey] = $conv_value;
+										}else
+										{
+												$totalpdf[$rowcount][$arraykey] = '';
+										}
+
+										$arraykey = $value.'_AVG';
+										if(isset($keyhdr[$arraykey]))
+										{
+												if($convert_price)
+														$conv_value = convertFromMasterCurrency($keyhdr[$arraykey],$current_user->conv_rate);
+												else
+														$conv_value = $keyhdr[$arraykey];
+												$totalpdf[$rowcount][$arraykey] = $conv_value;
+										}else
+										{
+												$totalpdf[$rowcount][$arraykey] = '';
+										}
+
+										$arraykey = $value.'_MIN';
+										if(isset($keyhdr[$arraykey]))
+										{
+												if($convert_price)
+														$conv_value = convertFromMasterCurrency($keyhdr[$arraykey],$current_user->conv_rate);
+												else
+														$conv_value = $keyhdr[$arraykey];
+												$totalpdf[$rowcount][$arraykey] = $conv_value;
+										}else
+										{
+												$totalpdf[$rowcount][$arraykey] = '';
+										}
+
+										$arraykey = $value.'_MAX';
+										if(isset($keyhdr[$arraykey]))
+										{
+												if($convert_price)
+														$conv_value = convertFromMasterCurrency($keyhdr[$arraykey],$current_user->conv_rate);
+												else
+														$conv_value = $keyhdr[$arraykey];
+												$totalpdf[$rowcount][$arraykey] = $conv_value;
+										}else
+										{
+												$totalpdf[$rowcount][$arraykey] = '';
+										}
+										$rowcount++;
+								}
+						}
+				}
+				return $totalpdf;
 		}elseif($outputformat == "TOTALHTML")
 		{
 			$escapedchars = Array('_SUM','_AVG','_MIN','_MAX');
@@ -2460,12 +2582,31 @@ class ReportRun extends CRMEntity
 					$y=$adb->num_fields($result);
 					$custom_field_values = $adb->fetch_array($result);
 
-					$coltotalhtml .= '<table width="100%" border="0" cellpadding="5" cellspacing="0" align="center" class="printReport" ><tr><th>'.$mod_strings[Totals].'</th><th>'.$mod_strings[SUM].'</th><th>'.$mod_strings[AVG].'</th><th>'.$mod_strings[MIN].'</th><th>'.$mod_strings[MAX].'</th></tr>';
+					$coltotalhtml .= "<br /><table align='center' width='60%' cellpadding='3' cellspacing='0' border='1' class='printReport'><tr><td class='rptCellLabel'>".$mod_strings['Totals']."</td><td><b>".$mod_strings['SUM']."</b></td><td><b>".$mod_strings['AVG']."</b></td><td><b>".$mod_strings['MIN']."</b></td><td><b>".$mod_strings['MAX']."</b></td></tr>";
+
+					// Performation Optimization: If Direct output is desired
+					if($directOutput) {
+						echo $coltotalhtml;
+						$coltotalhtml = '';
+					}
+					// END
 
 					foreach($this->totallist as $key=>$value)
 					{
 						$fieldlist = explode(":",$key);
-						$totclmnflds[str_replace($escapedchars," ",$fieldlist[3])] = str_replace($escapedchars," ",$fieldlist[3]);
+						$mod_query = $adb->pquery("SELECT distinct(tabid) as tabid, uitype as uitype from vtiger_field where tablename = ? and columnname=?",array($fieldlist[1],$fieldlist[2]));
+						if($adb->num_rows($mod_query)>0){
+							$module_name = getTabName($adb->query_result($mod_query,0,'tabid'));
+							$fieldlabel = trim(str_replace($escapedchars," ",$fieldlist[3]));
+							$fieldlabel = str_replace("_", " ", $fieldlabel);
+							if($module_name){
+								$field = getTranslatedString($module_name)." ".getTranslatedString($fieldlabel,$module_name);
+							} else {
+								$field = getTranslatedString($module_name)." ".getTranslatedString($fieldlabel);
+							}
+						}
+						$uitype_arr[str_replace($escapedchars," ",$module_name."_".$fieldlist[3])] = $adb->query_result($mod_query,0,"uitype");
+						$totclmnflds[str_replace($escapedchars," ",$module_name."_".$fieldlist[3])] = $field;
 					}
 
 					for($i =0;$i<$y;$i++)
@@ -2476,77 +2617,90 @@ class ReportRun extends CRMEntity
 					}
 					foreach($totclmnflds as $key=>$value)
 					{
-						$coltotalhtml .= '<tr valign=top>'; 
-						$col_header = getTranslatedString(trim(str_replace($modules," ",$value)));
+						$coltotalhtml .= '<tr class="rptGrpHead">';
+						$col_header = trim(str_replace($modules," ",$value));
 						$fld_name_1 = $this->primarymodule . "_" . trim($value);
 						$fld_name_2 = $this->secondarymodule . "_" . trim($value);
-						if(in_array($fld_name_1,$this->convert_currency) || in_array($fld_name_1,$this->append_currency_symbol_to_value)
+						if($uitype_arr[$value]==71 || in_array($fld_name_1,$this->convert_currency) || in_array($fld_name_1,$this->append_currency_symbol_to_value)
 								|| in_array($fld_name_2,$this->convert_currency) || in_array($fld_name_2,$this->append_currency_symbol_to_value)) {
 							$col_header .= " (".$app_strings['LBL_IN']." ".$current_user->currency_symbol.")";
 							$convert_price = true;
-						} else {
+						} else{
 							$convert_price = false;
 						}
-						$coltotalhtml .= '<td>'. $col_header .'</td>';
-						
-						$arraykey = trim($value).'_SUM';
+						$coltotalhtml .= '<td class="rptData">'. $col_header .'</td>';
+						$value = trim($key);
+						$arraykey = $value.'_SUM';
 						if(isset($keyhdr[$arraykey]))
 						{
 							if($convert_price)
 								$conv_value = convertFromMasterCurrency($keyhdr[$arraykey],$current_user->conv_rate);
-							else 
+							else
 								$conv_value = $keyhdr[$arraykey];
-							$coltotalhtml .= '<td>'.$conv_value.'</td>';
+							$coltotalhtml .= "<td class='rptTotal'>".$conv_value.'</td>';
 						}else
 						{
-							$coltotalhtml .= '<td>&nbsp;</td>';
+							$coltotalhtml .= "<td class='rptTotal'>&nbsp;</td>";
 						}
 
-						$arraykey = trim($value).'_AVG';
+						$arraykey = $value.'_AVG';
 						if(isset($keyhdr[$arraykey]))
 						{
 							if($convert_price)
 								$conv_value = convertFromMasterCurrency($keyhdr[$arraykey],$current_user->conv_rate);
-							else 
+							else
 								$conv_value = $keyhdr[$arraykey];
-							$coltotalhtml .= '<td>'.$conv_value.'</td>';
+							$coltotalhtml .= "<td class='rptTotal'>".$conv_value.'</td>';
 						}else
 						{
-							$coltotalhtml .= '<td>&nbsp;</td>';
+							$coltotalhtml .= "<td class='rptTotal'>&nbsp;</td>";
 						}
 
-						$arraykey = trim($value).'_MIN';
+						$arraykey = $value.'_MIN';
 						if(isset($keyhdr[$arraykey]))
 						{
 							if($convert_price)
 								$conv_value = convertFromMasterCurrency($keyhdr[$arraykey],$current_user->conv_rate);
-							else 
+							else
 								$conv_value = $keyhdr[$arraykey];
-							$coltotalhtml .= '<td>'.$conv_value.'</td>';
+							$coltotalhtml .= "<td class='rptTotal'>".$conv_value.'</td>';
 						}else
 						{
-							$coltotalhtml .= '<td>&nbsp;</td>';
+							$coltotalhtml .= "<td class='rptTotal'>&nbsp;</td>";
 						}
 
-						$arraykey = trim($value).'_MAX';
+						$arraykey = $value.'_MAX';
 						if(isset($keyhdr[$arraykey]))
 						{
 							if($convert_price)
 								$conv_value = convertFromMasterCurrency($keyhdr[$arraykey],$current_user->conv_rate);
-							else 
+							else
 								$conv_value = $keyhdr[$arraykey];
-							$coltotalhtml .= '<td>'.$conv_value.'</td>';
+							$coltotalhtml .= "<td class='rptTotal'>".$conv_value.'</td>';
 						}else
 						{
-							$coltotalhtml .= '<td>&nbsp;</td>';
+							$coltotalhtml .= "<td class='rptTotal'>&nbsp;</td>";
 						}
 
-						$coltotalhtml .= '<tr>';
+						$coltotalhtml .= '</tr>';
+
+						// Performation Optimization: If Direct output is desired
+						if($directOutput) {
+							echo $coltotalhtml;
+							$coltotalhtml = '';
+						}
+						// END
 					}
 
 					$coltotalhtml .= "</table>";
+					// Performation Optimization: If Direct output is desired
+					if($directOutput) {
+						echo $coltotalhtml;
+						$coltotalhtml = '';
+					}
+					// END
 				}
-			}			
+			}
 			return $coltotalhtml;
 		}
 	}
@@ -2709,8 +2863,8 @@ class ReportRun extends CRMEntity
 	{
 		global $modules,$current_language,$current_user,$app_strings;
 		$rep_header = ltrim(str_replace($modules," ",$fldname));
-		$rep_header_temp = ereg_replace(" ","_",$rep_header);
-		$rep_module = ereg_replace('_'.$rep_header_temp,"",$fldname);
+		$rep_header_temp = preg_replace("/\s+/","_",$rep_header);
+		$rep_module = preg_replace("/_$rep_header_temp/","",$fldname);
 		$temp_mod_strings = return_module_language($current_language,$rep_module);	
 		// htmlentities should be decoded in field names (eg. &). Noticed for fields like 'Terms & Conditions', 'S&H Amount'
 		$rep_header = decode_html($rep_header);		

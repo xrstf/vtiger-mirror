@@ -17,6 +17,11 @@ $local_log =& LoggerManager::getLogger('UsersAjax');
 $ajaxaction = $_REQUEST["ajxaction"];
 if($ajaxaction == "DETAILVIEW")
 {
+	if(empty($_SESSION['Users_FORM_TOKEN']) || $_SESSION['Users_FORM_TOKEN']
+			!== (int)$_REQUEST['form_token']) {
+		echo ":#:ERR".($app_strings['LBL_PERMISSION']);
+		die;
+	}
 	$userid = $_REQUEST["recordid"];
 	$tablename = $_REQUEST["tableName"];
 	$fieldname = $_REQUEST["fldName"];
