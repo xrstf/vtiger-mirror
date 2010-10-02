@@ -2609,6 +2609,17 @@ function check_permission($customerid, $module, $entityid) {
 								if ($adb->num_rows($res) > 0) {
 									return true;
 								}
+								if(checkModuleActive('Project')) {
+									$query = "SELECT vtiger_senotesrel.notesid FROM vtiger_senotesrel
+										INNER JOIN vtiger_project ON vtiger_project.projectid = vtiger_senotesrel.crmid
+										WHERE vtiger_project.linktoaccountscontacts IN (". generateQuestionMarks($allowed_contacts_and_accounts) .")
+										AND vtiger_senotesrel.notesid = ?";
+									$res = $adb->pquery($query, array($allowed_contacts_and_accounts, $entityid));
+									if ($adb->num_rows($res) > 0) {
+										return true;
+									}
+								}
+
 								$query = "SELECT vtiger_senotesrel.notesid FROM vtiger_senotesrel
 															INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_senotesrel.notesid AND vtiger_crmentity.deleted = 0
 															WHERE vtiger_senotesrel.crmid IN (". generateQuestionMarks($faq_id) .")
@@ -2748,7 +2759,7 @@ function get_documents($id,$module,$customerid,$sessionid)
 
 	$query ="select vtiger_notes.title,'Documents' ActivityType, vtiger_notes.filename,
 		crm2.createdtime,vtiger_notes.notesid,vtiger_notes.folderid,
-		vtiger_notes.notecontent description, vtiger_users.user_name
+		vtiger_notes.notecontent description, vtiger_users.user_name, vtiger_notes.filelocationtype
 		from vtiger_notes
 		LEFT join vtiger_senotesrel on vtiger_senotesrel.notesid= vtiger_notes.notesid
 		INNER join vtiger_crmentity on vtiger_crmentity.crmid= vtiger_senotesrel.crmid
