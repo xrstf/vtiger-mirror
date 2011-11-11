@@ -1101,26 +1101,6 @@ function getAdvancedSearchCriteriaList($advft_criteria, $advft_criteria_groups) 
 			}
 		}
 		
-		$temp_val = explode(",",$adv_filter_value);
-		if(($column_info[4] == 'D' || ($column_info[4] == 'T' && $column_info[1] != 'time_start' && $column_info[1] != 'time_end')
-				|| ($column_info[4] == 'DT'))
-			&& ($column_info[4] != '' && $adv_filter_value != '' )) {
-			$val = Array();
-			for($x=0;$x<count($temp_val);$x++) {
-				if($column_info[4] == 'D') {
-					$date = new DateTimeField(trim($temp_val[$x]));
-					$val[$x] = $date->getDBInsertDateValue();
-				} elseif($column_info[4] == 'DT') {
-					$date = new DateTimeField(trim($temp_val[$x]));
-					$val[$x] = $date->getDBInsertDateTimeValue();
-				} else {
-					$date = new DateTimeField(trim($temp_val[$x]));
-					$val[$x] = $date->getDBInsertTimeValue();
-				}
-			}
-			$adv_filter_value = implode(",",$val);
-		}
-		
 		$criteria = array();
 		$criteria['columnname'] = $adv_filter_column;
 		$criteria['comparator'] = $adv_filter_comparator;
@@ -1147,7 +1127,7 @@ function getAdvancedSearchCriteriaList($advft_criteria, $advft_criteria_groups) 
 }
 
 function generateAdvancedSearchSql($advfilterlist) {
-	global $log, $currentModule,$column_array;
+	global $log, $currentModule,$column_array,$current_user;
 
 	$advfiltersql = "";
 	
@@ -1239,7 +1219,9 @@ function getAdvancedSearchComparator($comparator,$value,$datatype = '') {
 	global $adb, $default_charset;
 	$value=html_entity_decode(trim($value),ENT_QUOTES,$default_charset);
 	$value = $adb->sql_escape_string($value);
-	$value = getValidDBInsertDateTimeValue($value, $datatype);
+	if($datatype == 'DT' || $datatype == 'D') {
+		$value = getValidDBInsertDateTimeValue($value, $datatype);
+	}
 	
 	if($comparator == "e") {
 		if(trim($value) == "NULL") {
