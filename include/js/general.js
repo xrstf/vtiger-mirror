@@ -150,7 +150,7 @@ function findPosY(obj) {
 
 		}
 
-	} else if (document.layers) {
+	}else if (document.layers) {
 
 		curtop += obj.y;
 
@@ -225,7 +225,7 @@ function emptyCheck(fldName,fldLabel, fldType) {
 		else{
 			return true
 		}
-	} else if((fldType == "textarea")
+	}else if((fldType == "textarea")
 		&& (typeof(CKEDITOR)!=='undefined' && CKEDITOR.intances[fldName] !== 'undefined')) {
 		var textObj = CKEDITOR.intances[fldName];
 		var textValue = textObj.getData();
@@ -694,12 +694,12 @@ function timeComparison(fldName1,fldLabel1,fldName2,fldLabel2,type) {
 
 function numValidate(fldName,fldLabel,format,neg) {
 	var val=getObj(fldName).value.replace(/^\s+/g, '').replace(/\s+$/g, '');
-	if(typeof userCurrencySeparator != 'undefined') {
+	if(typeof userCurrencySeparator != 'undefined' && userCurrencySeparator != '') {
 		while(val.indexOf(userCurrencySeparator) != -1) {
 			val = val.replace(userCurrencySeparator,'');
 		}
 	}
-	if(typeof userDecimalSeparator != 'undefined') {
+	if(typeof userDecimalSeparator != 'undefined' && userDecimalSeparator != '') {
 		if(val.indexOf(userDecimalSeparator) != -1) {
 			val = val.replace(userDecimalSeparator,'.');
 		}
@@ -806,7 +806,7 @@ function numValidate(fldName,fldLabel,format,neg) {
 
 function intValidate(fldName,fldLabel) {
 	var val=getObj(fldName).value.replace(/^\s+/g, '').replace(/\s+$/g, '');
-	if(typeof userCurrencySeparator != 'undefined') {
+	if(typeof userCurrencySeparator != 'undefined' && userCurrencySeparator != '') {
 		while(val.indexOf(userCurrencySeparator) != -1) {
 			val = val.replace(userCurrencySeparator,'');
 		}
@@ -4476,14 +4476,14 @@ function fnvshobjMore(obj,Lay,announcement){
 	var leftSide = findPosX(obj);
 	var topSide = findPosY(obj);
 	var maxW = tagName.style.width;
-	var widthM = maxW.substring(0,maxW.length-2);
+	var widthM = tagName.offsetWidth;
 	if(Lay == 'editdiv') {
 		leftSide = leftSide - 225;
 		topSide = topSide - 225;
 	} else if(Lay == 'transferdiv') {
 		leftSide = leftSide - 10;
 		topSide = topSide;
-        }
+	}
 	var IE = document.all?true:false;
 	if(IE) {
 		if($("repposition1")) {
@@ -4493,28 +4493,35 @@ function fnvshobjMore(obj,Lay,announcement){
 		}
 	}
 
-	var getVal = eval(leftSide) + eval(widthM);
-	if(getVal  > document.body.clientWidth ) {
-		leftSide = eval(leftSide) - eval(widthM);
-		tagName.style.left = leftSide + 34 + 'px';
-	} else{
-		if((leftSide > 100) && (leftSide < 500)){
-			tagName.style.left= leftSide -50 + 'px';
-		} else if((leftSide >= 500) && (leftSide < 800)){
-			tagName.style.left= leftSide -150 + 'px';
-		} else if((leftSide >= 800) && (leftSide < 1400)){
+	if((leftSide > 100) && (leftSide < 500)){
+		tagName.style.left= leftSide -50 + 'px';
+	} else if((leftSide >= 500) && (leftSide < 800)){
+		tagName.style.left= leftSide -150 + 'px';
+	} else if((leftSide >= 800) && (leftSide < 1400)){
+		if((widthM > 100) && (widthM < 250)) {
+			tagName.style.left= leftSide- 100  + 'px';
+		} else if((widthM >= 250) && (widthM < 350)) {
+
+			tagName.style.left= leftSide- 200  + 'px';
+		}
+		else if((widthM >= 350) && (widthM < 500)) {
+			console.log(widthM);
+			tagName.style.left= leftSide- 300  + 'px';
+		}
+		else {
 			tagName.style.left= leftSide -550 + 'px';
-		} else{
-			tagName.style.left= leftSide  + 5 +'px';
 		}
-		if(announcement){
-			tagName.style.top = 110+'px';
-		}else{
-			tagName.style.top = 76+'px';
-		}
-		tagName.style.display = 'block';
-		tagName.style.visibility = "visible";
+	} else {
+		tagName.style.left= leftSide  + 5 +'px';
 	}
+	if(announcement){
+		tagName.style.top = 110+'px';
+	}else{
+		tagName.style.top = 76+'px';
+	}
+	tagName.style.display = 'block';
+	tagName.style.visibility = "visible";
+
 }
 
 function fnvshobjsearch(obj,Lay){

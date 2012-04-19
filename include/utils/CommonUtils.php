@@ -3248,4 +3248,12 @@ function getMenuStructure($selectModule = '') {
 	return $resultant_array;
 }
 
+
+function getReturnPath($host){
+	$arr=explode('.',$host);
+	unset($arr[0]);
+	$domain=implode('.',$arr);
+	$Return_Path='noreply@'.$domain;
+	return $Return_Path;
+}
 ?>
