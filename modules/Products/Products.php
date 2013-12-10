@@ -73,7 +73,7 @@ class Products extends CRMEntity {
 
 	// Used when enabling/disabling the mandatory fields for the module.
 	// Refers to vtiger_field.fieldname values.
-	var $mandatory_fields = Array('createdtime', 'modifiedtime', 'productname', 'imagename', 'assigned_user_id');
+	var $mandatory_fields = Array('createdtime', 'modifiedtime', 'productname', 'assigned_user_id');
 	 // Josh added for importing and exporting -added in patch2
     var $unit_price;
 
@@ -175,7 +175,7 @@ class Products extends CRMEntity {
 		}
 
 		$product_base_conv_rate = getBaseConversionRateForProduct($this->id, $this->mode);
-
+		$currencySet = 0;
 		//Save the Product - Currency relationship if corresponding currency check box is enabled
 		for($i=0;$i<count($currency_details);$i++)
 		{
@@ -199,8 +199,13 @@ class Products extends CRMEntity {
 
 				// Update the Product information with Base Currency choosen by the User.
 				if ($_REQUEST['base_currency'] == $cur_valuename) {
+					$currencySet = 1;
 					$adb->pquery("update vtiger_products set currency_id=?, unit_price=? where productid=?", array($curid, $actualPrice, $this->id));
 				}
+			}
+			if(!$currencySet){
+				$curid = fetchCurrency($current_user->id);
+				$adb->pquery("update vtiger_products set currency_id=? where productid=?", array($curid, $this->id));
 			}
 		}
 
@@ -468,7 +473,7 @@ class Products extends CRMEntity {
 		$userNameSql = getSqlForNameInDisplayFormat(array('first_name'=>
 							'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'), 'Users');
 		$query = "SELECT vtiger_potential.potentialid, vtiger_crmentity.crmid,
-			vtiger_potential.potentialname, vtiger_account.accountname, vtiger_potential.related_to,
+			vtiger_potential.potentialname, vtiger_account.accountname, vtiger_potential.related_to, vtiger_potential.contact_id,
 			vtiger_potential.sales_stage, vtiger_potential.amount, vtiger_potential.closingdate,
 			case when (vtiger_users.user_name not like '') then $userNameSql else
 			vtiger_groups.groupname end as user_name, vtiger_crmentity.smownerid,
@@ -479,6 +484,7 @@ class Products extends CRMEntity {
 			INNER JOIN vtiger_products ON vtiger_seproductsrel.productid = vtiger_products.productid
 			INNER JOIN vtiger_potentialscf ON vtiger_potential.potentialid = vtiger_potentialscf.potentialid
 			LEFT JOIN vtiger_account ON vtiger_potential.related_to = vtiger_account.accountid
+			LEFT JOIN vtiger_contactdetails ON vtiger_potential.contact_id = vtiger_contactdetails.contactid
 			LEFT JOIN vtiger_users ON vtiger_users.id = vtiger_crmentity.smownerid
 			LEFT JOIN vtiger_groups ON vtiger_groups.groupid = vtiger_crmentity.smownerid
 			WHERE vtiger_crmentity.deleted = 0 AND vtiger_products.productid = ".$id;
@@ -1002,7 +1008,9 @@ class Products extends CRMEntity {
 			vtiger_products.qty_per_unit, vtiger_products.unit_price,
 			vtiger_crmentity.crmid, vtiger_crmentity.smownerid
 			FROM vtiger_products
-			INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_products.productid
+			INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_products.productid 
+			INNER JOIN vtiger_productcf
+				ON vtiger_products.productid = vtiger_productcf.productid 
 			LEFT JOIN vtiger_seproductsrel ON vtiger_seproductsrel.crmid = vtiger_products.productid AND vtiger_seproductsrel.setype='Products'
 			LEFT JOIN vtiger_users
 				ON vtiger_users.id=vtiger_crmentity.smownerid
@@ -1051,6 +1059,8 @@ class Products extends CRMEntity {
 			FROM vtiger_products
 			INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_products.productid
 			INNER JOIN vtiger_seproductsrel ON vtiger_seproductsrel.productid = vtiger_products.productid AND vtiger_seproductsrel.setype='Products'
+			INNER JOIN vtiger_productcf ON vtiger_products.productid = vtiger_productcf.productid 
+			
 			WHERE vtiger_crmentity.deleted = 0 AND vtiger_seproductsrel.crmid = $id ";
 
 		$log->debug("Exiting get_products method ...");
@@ -1124,15 +1134,15 @@ class Products extends CRMEntity {
 				"Quotes"=>"vtiger_inventoryproductrel","PurchaseOrder"=>"vtiger_inventoryproductrel","SalesOrder"=>"vtiger_inventoryproductrel",
 				"Invoice"=>"vtiger_inventoryproductrel","PriceBooks"=>"vtiger_pricebookproductrel","Leads"=>"vtiger_seproductsrel",
 				"Accounts"=>"vtiger_seproductsrel","Potentials"=>"vtiger_seproductsrel","Contacts"=>"vtiger_seproductsrel",
-				"Documents"=>"vtiger_senotesrel");
+				"Documents"=>"vtiger_senotesrel",'Assets'=>'vtiger_assets',);
 
 		$tbl_field_arr = Array("vtiger_troubletickets"=>"ticketid","vtiger_seproductsrel"=>"crmid","vtiger_seattachmentsrel"=>"attachmentsid",
 				"vtiger_inventoryproductrel"=>"id","vtiger_pricebookproductrel"=>"pricebookid","vtiger_seproductsrel"=>"crmid",
-				"vtiger_senotesrel"=>"notesid");
+				"vtiger_senotesrel"=>"notesid",'vtiger_assets'=>'assetsid');
 
 		$entity_tbl_field_arr = Array("vtiger_troubletickets"=>"product_id","vtiger_seproductsrel"=>"crmid","vtiger_seattachmentsrel"=>"crmid",
 				"vtiger_inventoryproductrel"=>"productid","vtiger_pricebookproductrel"=>"productid","vtiger_seproductsrel"=>"productid",
-				"vtiger_senotesrel"=>"crmid");
+				"vtiger_senotesrel"=>"crmid",'vtiger_assets'=>'product');
 
 		foreach($transferEntityIds as $transferId) {
 			foreach($rel_table_arr as $rel_module=>$rel_table) {
@@ -1164,7 +1174,7 @@ class Products extends CRMEntity {
 	function generateReportsSecQuery($module,$secmodule,$queryplanner) {
 		global $current_user;
 		$matrix = $queryplanner->newDependencyMatrix();
-		
+
 		$matrix->setDependency("vtiger_crmentityProducts",array("vtiger_groupsProducts","vtiger_usersProducts","vtiger_lastModifiedByProducts"));
 		$matrix->setDependency("vtiger_products",array("innerProduct","vtiger_crmentityProducts","vtiger_productcf","vtiger_vendorRelProducts"));
 		//query planner Support  added

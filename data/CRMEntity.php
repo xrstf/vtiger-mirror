@@ -472,11 +472,11 @@ class CRMEntity {
 						if (isset($fileQuery)) {
 							$rowCount = $adb->num_rows($fileQuery);
 							if ($rowCount > 0) {
-								$fldvalue = $adb->query_result($fileQuery, 0, 'filename');
+								$fldvalue = decode_html($adb->query_result($fileQuery, 0, 'filename'));
 							}
 						}
 					} else {
-						$fldvalue = $this->column_fields[$fieldname];
+						$fldvalue = decode_html($this->column_fields[$fieldname]);
 					}
 				} elseif ($uitype == 8) {
 					$this->column_fields[$fieldname] = rtrim($this->column_fields[$fieldname], ',');
@@ -610,6 +610,27 @@ class CRMEntity {
 		}
 	}
 
+	/** Function to attachment filename of the given entity
+	 * @param $notesid -- crmid:: Type Integer
+	 * The function will get the attachmentsid for the given entityid from vtiger_seattachmentsrel table and get the attachmentsname from vtiger_attachments table
+	 * returns the 'filename'
+	 */
+	function getOldFileName($notesid) {
+		global $log;
+		$log->info("in getOldFileName  " . $notesid);
+		global $adb;
+		$query1 = "select * from vtiger_seattachmentsrel where crmid=?";
+		$result = $adb->pquery($query1, array($notesid));
+		$noofrows = $adb->num_rows($result);
+		if ($noofrows != 0)
+			$attachmentid = $adb->query_result($result, 0, 'attachmentsid');
+		if ($attachmentid != '') {
+			$query2 = "select * from vtiger_attachments where attachmentsid=?";
+			$filename = $adb->query_result($adb->pquery($query2, array($attachmentid)), 0, 'name');
+		}
+		return $filename;
+	}
+
 	/**
 	 * Function returns the column alias for a field
 	 * @param <Array> $fieldinfo - field information
@@ -696,12 +717,12 @@ class CRMEntity {
 			if (isset($required_tables['vtiger_crmentity'])) {
 				$from_clause  = ' vtiger_crmentity';
 				unset($required_tables['vtiger_crmentity']);
-			foreach ($required_tables as $tablename => $tableindex) {
-				if (in_array($tablename, $multirow_tables)) {
-					// Avoid multirow table joins.
-					continue;
-				}
-				$from_clause .= sprintf(' %s %s ON %s.%s=%s.%s', $join_type,
+				foreach ($required_tables as $tablename => $tableindex) {
+					if (in_array($tablename, $multirow_tables)) {
+						// Avoid multirow table joins.
+						continue;
+					}
+					$from_clause .= sprintf(' %s %s ON %s.%s=%s.%s', $join_type,
 						$tablename, $tablename, $tableindex, 'vtiger_crmentity', 'crmid');
 				}
 			}
@@ -1474,6 +1495,7 @@ class CRMEntity {
 				vtiger_notes.notecontent description,vtiger_notes.*
 				from vtiger_notes
 				inner join vtiger_senotesrel on vtiger_senotesrel.notesid= vtiger_notes.notesid
+				left join vtiger_notescf ON vtiger_notescf.notesid= vtiger_notes.notesid
 				inner join vtiger_crmentity on vtiger_crmentity.crmid= vtiger_notes.notesid and vtiger_crmentity.deleted=0
 				inner join vtiger_crmentity crm2 on crm2.crmid=vtiger_senotesrel.crmid
 				LEFT JOIN vtiger_groups
@@ -2049,28 +2071,6 @@ class CRMEntity {
 	}
 
 	/*
-	 * Function to get the security query part of a report
-	 * @param - $module primary module name
-	 * returns the query string formed on fetching the related data for report for security of the module
-	 */
-
-	function getSecListViewSecurityParameter($module) {
-		$tabid = getTabid($module);
-		global $current_user;
-		if ($current_user) {
-			require('user_privileges/user_privileges_' . $current_user->id . '.php');
-			require('user_privileges/sharing_privileges_' . $current_user->id . '.php');
-		}
-		$sec_query .= " and (vtiger_crmentity$module.smownerid in($current_user->id) or vtiger_crmentity$module.smownerid in(select vtiger_user2role.userid from vtiger_user2role inner join vtiger_users on vtiger_users.id=vtiger_user2role.userid inner join vtiger_role on vtiger_role.roleid=vtiger_user2role.roleid where vtiger_role.parentrole like '" . $current_user_parent_role_seq . "::%') or vtiger_crmentity$module.smownerid in(select shareduserid from vtiger_tmp_read_user_sharing_per where userid=" . $current_user->id . " and tabid=" . $tabid . ") or (";
-
-		if (sizeof($current_user_groups) > 0) {
-			$sec_query .= " vtiger_groups$module.groupid in (" . implode(",", $current_user_groups) . ") or ";
-		}
-		$sec_query .= " vtiger_groups$module.groupid in(select vtiger_tmp_read_group_sharing_per.sharedgroupid from vtiger_tmp_read_group_sharing_per where userid=" . $current_user->id . " and tabid=" . $tabid . "))) ";
-		return $sec_query;
-	}
-
-	/*
 	 * Function to get the relation query part of a report
 	 * @param - $module primary module name
 	 * @param - $secmodule secondary module name
@@ -2559,17 +2559,15 @@ class CRMEntity {
 			ModTracker::unLinkRelation($module, $crmid, $with_module, $with_crmid);
 		}
 	}
-
 	/**
 	 * Function which will give the basic query to find duplicates
 	 * @param <String> $module
 	 * @param <String> $tableColumns
-	 * @param <String> $mergeFields
-	 * @param <String> $select_cols
+	 * @param <String> $selectedColumns
+	 * @param <Boolean> $ignoreEmpty
 	 * @return string
 	 */
-	// Note : remove getDuplicatesQuery API once vtiger5 code is removed
-    function getQueryForDuplicates($module, $tableColumns, $selectedColumns = '') {
+    function getQueryForDuplicates($module, $tableColumns, $selectedColumns = '', $ignoreEmpty = false) {
 		if(is_array($tableColumns)) {
 			$tableColumnsString = implode(',', $tableColumns);
 		}
@@ -2598,6 +2596,12 @@ class CRMEntity {
 
         $whereClause = " WHERE vtiger_crmentity.deleted = 0";
         $whereClause .= $this->getListViewSecurityParameter($module);
+
+		if($ignoreEmpty) {
+			foreach($tableColumns as $tableColumn){
+				$whereClause .= " AND ($tableColumn IS NOT NULL AND $tableColumn != '') ";
+			}
+		}
 
         if (isset($selectedColumns) && trim($selectedColumns) != '') {
             $sub_query = "SELECT $selectedColumns FROM $this->table_name AS t " .

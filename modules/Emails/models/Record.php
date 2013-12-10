@@ -9,7 +9,7 @@
  *************************************************************************************/
 
 class Emails_Record_Model extends Vtiger_Record_Model {
-
+	
 	/**
 	 * Function to get the Detail View url for the record
 	 * @return <String> - Record Detail View Url
@@ -18,7 +18,7 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 		list($parentId, $status) = explode('@', reset(array_filter(explode('|', $this->get('parent_id')))));
 		return 'Javascript:Vtiger_Index_Js.showEmailPreview("'.$this->getId().'","'.$parentId.'")';
 	}
-
+	
 	/**
 	 * Function to save an Email
 	 */
@@ -55,7 +55,7 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 		$toEmailInfo = array_filter($this->get('toemailinfo'));
 		$attachments = $this->getAttachmentDetails();
 		$status = false;
-
+		
 		// Merge Users module merge tags based on current user.
 		$mergedDescription = getMergedDescription($this->get('description'), $currentUserModel->getId(), 'Users');
 
@@ -63,7 +63,12 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 			$parentModule = $this->getEntityType($id);
 			$mailer->reinitialize();
 			$mailer->ConfigSenderInfo($fromEmail, $userName, $replyTo);
-
+			
+			$old_mod_strings = vglobal('mod_strings');
+			$currentLanguage = Vtiger_Language_Handler::getLanguage();
+			$moduleLanguageStrings = Vtiger_Language_Handler::getModuleStringsFromFile($currentLanguage,$parentModule);
+			vglobal('mod_strings', $moduleLanguageStrings['languageStrings']);
+			
 			if ($parentModule != 'Users') {
 				// Apply merge for non-Users module merge tags.
 				$description = getMergedDescription($mergedDescription, $id, $parentModule);
@@ -71,7 +76,8 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 				// Re-merge the description for user tags based on actual user.
 				$description = getMergedDescription($this->get('description'), $id, 'Users');
 			}
-
+			vglobal('mod_strings', $old_mod_strings);
+			
 			if (strpos($description, '$logo$')) {
 				$description = str_replace('$logo$',"<img src='cid:logo' />", $description);
 				$logo = true;
@@ -82,7 +88,7 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 				$mailer->Body .= $description;
 				$mailer->Signature = str_replace(array('\r\n', '\n'),'<br>',$currentUserModel->get('signature'));
 				if($mailer->Signature != '') {
-					$mailer->Body.= $mailer->Signature;
+					$mailer->Body.= decode_html($mailer->Signature);
 				}
 				$mailer->Subject = $this->get('subject');
 				$mailer->AddAddress($email);
@@ -304,7 +310,7 @@ class Emails_Record_Model extends Vtiger_Record_Model {
 		$applicationKey = vglobal('application_unique_key');
 		$emailId = $this->getId();
 
-		$trackURL = $siteURL."/modules/Emails/actions/TrackAccess.php?record=$emailId&parentId=$crmId&applicationKey=$applicationKey";
+		$trackURL = "$siteURL/modules/Emails/actions/TrackAccess.php?record=$emailId&parentId=$crmId&applicationKey=$applicationKey";
 		$imageDetails = "<img src='$trackURL' alt='' width='1' height='1'>";
 		return $imageDetails;
 	}

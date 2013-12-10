@@ -41,4 +41,8 @@ class SMSProvider {
 
 
 }
+
+class SMSNotifier_SMSProvider_Provider extends SMSProvider {
+}
+
 ?>

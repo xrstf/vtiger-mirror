@@ -103,7 +103,7 @@ Class Reports_Edit_View extends Vtiger_Edit_View {
 			}
 			$relatedModules[$primaryModule] = $translatedRelatedModules;
 		}
-
+        
         $viewer->assign('MODULELIST', $modulesList);
 		$viewer->assign('RELATED_MODULES', $relatedModules);
 		$viewer->assign('REPORT_MODEL', $reportModel);
@@ -184,14 +184,21 @@ Class Reports_Edit_View extends Vtiger_Edit_View {
 			$reportModel->setSecondaryModule($secondaryModules);
 
 			$secondaryModules = explode(':',$secondaryModules);
-		}
+		}else{
+            $secondaryModules = array();
+        }
 
 		$viewer->assign('RECORD_ID', $record);
 		$viewer->assign('REPORT_MODEL', $reportModel);
 		$viewer->assign('PRIMARY_MODULE',$primaryModule);
+	
+		$recordStructureInstance = Vtiger_RecordStructure_Model::getInstanceFromRecordModel($reportModel);
+		$primaryModuleRecordStructure = $recordStructureInstance->getPrimaryModuleRecordStructure();
+		$secondaryModuleRecordStructures = $recordStructureInstance->getSecondaryModuleRecordStructure();
+
 		$viewer->assign('SECONDARY_MODULES',$secondaryModules);
-		$viewer->assign('PRIMARY_MODULE_RECORD_STRUCTURE', $reportModel->getPrimaryModuleRecordStructure());
-		$viewer->assign('SECONDARY_MODULE_RECORD_STRUCTURES', $reportModel->getSecondaryModuleRecordStructure());
+		$viewer->assign('PRIMARY_MODULE_RECORD_STRUCTURE', $primaryModuleRecordStructure);
+		$viewer->assign('SECONDARY_MODULE_RECORD_STRUCTURES', $secondaryModuleRecordStructures);
         $dateFilters = Vtiger_Field_Model::getDateFilterTypes();
         foreach($dateFilters as $comparatorKey => $comparatorInfo) {
             $comparatorInfo['startdate'] = DateTimeField::convertToUserFormat($comparatorInfo['startdate']);
@@ -200,8 +207,14 @@ Class Reports_Edit_View extends Vtiger_Edit_View {
             $dateFilters[$comparatorKey] = $comparatorInfo;
         }
 		$viewer->assign('DATE_FILTERS', $dateFilters);
+		
+		if(($primaryModule == 'Calendar') || (in_array('Calendar', $secondaryModules))){
+			$advanceFilterOpsByFieldType = Calendar_Field_Model::getAdvancedFilterOpsByFieldType();
+		} else{
+			$advanceFilterOpsByFieldType = Vtiger_Field_Model::getAdvancedFilterOpsByFieldType();
+		}
 		$viewer->assign('ADVANCED_FILTER_OPTIONS', Vtiger_Field_Model::getAdvancedFilterOptions());
-		$viewer->assign('ADVANCED_FILTER_OPTIONS_BY_TYPE', Vtiger_Field_Model::getAdvancedFilterOpsByFieldType());
+		$viewer->assign('ADVANCED_FILTER_OPTIONS_BY_TYPE', $advanceFilterOpsByFieldType);
 		$viewer->assign('MODULE', $moduleName);
 
 		$calculationFields = $reportModel->get('calculation_fields');

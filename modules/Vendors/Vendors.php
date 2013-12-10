@@ -60,7 +60,7 @@ class Vendors extends CRMEntity {
 
 	// Used when enabling/disabling the mandatory fields for the module.
 	// Refers to vtiger_field.fieldname values.
-	var $mandatory_fields = Array('createdtime', 'modifiedtime', 'vendorname');
+	var $mandatory_fields = Array('createdtime', 'modifiedtime', 'vendorname', 'assigned_user_id');
 
 	//Added these variables which are used as default order by and sortorder in ListView
 	var $default_order_by = 'vendorname';
@@ -125,7 +125,8 @@ class Vendors extends CRMEntity {
 					vtiger_crmentity.crmid, vtiger_crmentity.smownerid,vtiger_vendor.vendorname
 			  		FROM vtiger_products
 			  		INNER JOIN vtiger_vendor ON vtiger_vendor.vendorid = vtiger_products.vendor_id
-			  		INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_products.productid
+			  		INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_products.productid INNER JOIN vtiger_productcf
+				    ON vtiger_products.productid = vtiger_productcf.productid 
 					LEFT JOIN vtiger_users
 						ON vtiger_users.id=vtiger_crmentity.smownerid
 					LEFT JOIN vtiger_groups
@@ -394,18 +395,20 @@ class Vendors extends CRMEntity {
 	 * returns the query string formed on fetching the related data for report for primary module
 	 */
 	function generateReportsQuery($module){
-	 			$moduletable = $this->table_name;
-	 			$moduleindex = $this->table_index;
-	 			$modulecftable = $this->tab_name[2];
-	 			$modulecfindex = $this->tab_name_index[$modulecftable];
+		$moduletable = $this->table_name;
+		$moduleindex = $this->table_index;
+		$modulecftable = $this->tab_name[2];
+		$modulecfindex = $this->tab_name_index[$modulecftable];
 
-	 			$query = "from $moduletable
-			        inner join $modulecftable as $modulecftable on $modulecftable.$modulecfindex=$moduletable.$moduleindex
-					inner join vtiger_crmentity on vtiger_crmentity.crmid=$moduletable.$moduleindex
-					left join vtiger_users as vtiger_users".$module." on vtiger_users".$module.".id = vtiger_crmentity.smownerid
-					left join vtiger_users on vtiger_users.id = vtiger_crmentity.smownerid
-                    left join vtiger_users as vtiger_lastModifiedByVendors on vtiger_lastModifiedByVendors.id = vtiger_crmentity.modifiedby ";
-	            return $query;
+		$query = "from $moduletable
+			inner join $modulecftable as $modulecftable on $modulecftable.$modulecfindex=$moduletable.$moduleindex
+			inner join vtiger_crmentity on vtiger_crmentity.crmid=$moduletable.$moduleindex
+			left join vtiger_groups as vtiger_groups$module on vtiger_groups$module.groupid = vtiger_crmentity.smownerid
+			left join vtiger_users as vtiger_users".$module." on vtiger_users".$module.".id = vtiger_crmentity.smownerid
+			left join vtiger_groups on vtiger_groups.groupid = vtiger_crmentity.smownerid
+			left join vtiger_users on vtiger_users.id = vtiger_crmentity.smownerid
+			left join vtiger_users as vtiger_lastModifiedByVendors on vtiger_lastModifiedByVendors.id = vtiger_crmentity.modifiedby ";
+		return $query;
 	}
 
 	/*

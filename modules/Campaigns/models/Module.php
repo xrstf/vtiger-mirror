@@ -20,7 +20,16 @@ class Campaigns_Module_Model extends Vtiger_Module_Model {
 			$specificQuery = 'AND vtiger_leaddetails.converted = 0';
 			return $specificQuery;
 		}
+		return parent::getSpecificRelationQuery($relatedModule);
  	}
+	
+	/**
+	 * Function to check whether the module is summary view supported
+	 * @return <Boolean> - true/false
+	 */
+	public function isSummaryViewSupported() {
+		return false;
+	}
     
     public function getSettingLinks() {
         vimport('~~modules/com_vtiger_workflow/VTWorkflowUtils.php');

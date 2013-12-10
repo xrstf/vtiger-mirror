@@ -112,7 +112,7 @@ function return_name(&$row, $first_column, $last_column)
 */
 
 //used in module file
-function get_user_array($add_blank=true, $status="Active", $assigned_user="",$private="")
+function get_user_array($add_blank=true, $status="Active", $assigned_user="",$private="",$module=false)
 {
 	global $log;
 	$log->debug("Entering get_user_array(".$add_blank.",". $status.",".$assigned_user.",".$private.") method ...");
@@ -123,7 +123,10 @@ function get_user_array($add_blank=true, $status="Active", $assigned_user="",$pr
 		require('user_privileges/user_privileges_'.$current_user->id.'.php');
 	}
 	static $user_array = null;
-	$module=$_REQUEST['module'];
+	if(!$module){
+        $module=$_REQUEST['module'];
+    }
+    
 
 	if($user_array == null)
 	{
@@ -180,7 +183,7 @@ function get_user_array($add_blank=true, $status="Active", $assigned_user="",$pr
 	return $user_array;
 }
 
-function get_group_array($add_blank=true, $status="Active", $assigned_user="",$private="")
+function get_group_array($add_blank=true, $status="Active", $assigned_user="",$private="",$module = false)
 {
 	global $log;
 	$log->debug("Entering get_user_array(".$add_blank.",". $status.",".$assigned_user.",".$private.") method ...");
@@ -191,7 +194,9 @@ function get_group_array($add_blank=true, $status="Active", $assigned_user="",$p
 		require('user_privileges/user_privileges_'.$current_user->id.'.php');
 	}
 	static $group_array = null;
-	$module=$_REQUEST['module'];
+	if(!$module){
+        $module=$_REQUEST['module'];
+    }
 
 	if($group_array == null)
 	{
@@ -1803,12 +1808,32 @@ function getCombinations($array, $tempString = '') {
 			 if(!is_array($result)) {
 				 $result = array();
 			 }
-			 $result = array_merge($result, getCombinations($splicedArray, $tempString .' ' . $element[0]));
+			 $result = array_merge($result, getCombinations($splicedArray, $tempString. ' |##| ' .$element[0]));
 		} else {
-			return array(trim($tempString. ' ' . $element[0]));
+			return array($tempString. ' |##| ' . $element[0]);
 		}
 	}
 	return $result;
+}
+
+function getCompanyDetails() {
+	global $adb;
+	
+	$sql="select * from vtiger_organizationdetails";
+	$result = $adb->pquery($sql, array());
+	
+	$companyDetails = array();
+	$companyDetails['companyname'] = $adb->query_result($result,0,'organizationname');
+	$companyDetails['website'] = $adb->query_result($result,0,'website');
+	$companyDetails['address'] = $adb->query_result($result,0,'address');
+	$companyDetails['city'] = $adb->query_result($result,0,'city');
+	$companyDetails['state'] = $adb->query_result($result,0,'state');
+	$companyDetails['country'] = $adb->query_result($result,0,'country');
+	$companyDetails['phone'] = $adb->query_result($result,0,'phone');
+	$companyDetails['fax'] = $adb->query_result($result,0,'fax');
+	$companyDetails['logoname'] = $adb->query_result($result,0,'logoname');
+	
+	return $companyDetails;
 }
 
 /**

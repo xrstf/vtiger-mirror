@@ -57,7 +57,6 @@ class Install_Index_view extends Vtiger_View_Controller {
 	}
 
 	public function postProcess(Vtiger_Request $request) {
-		parent::postProcess($request);
 		$viewer = $this->getViewer($request);
 		$moduleName = $request->getModule();
 		$viewer->view('InstallPostProcess.tpl', $moduleName);
@@ -143,6 +142,9 @@ class Install_Index_view extends Vtiger_View_Controller {
 	}
 
 	public function Step6(Vtiger_Request $request) {
+		// Set favourable error reporting
+		error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
+
 		$moduleName = $request->getModule();
 		if($_SESSION['config_file_info']['authentication_key'] != $request->get('auth_key')) {
 			die(vtranslate('ERR_NOT_AUTHORIZED_TO_PERFORM_THE_OPERATION', $moduleName));
@@ -182,8 +184,10 @@ class Install_Index_view extends Vtiger_View_Controller {
 	public function getHeaderCss(Vtiger_Request $request) {
 		$moduleName = $request->getModule();
 		$parentCSSScripts = parent::getHeaderCss($request);
-		$styleFileNames = array("modules.$moduleName.resources.css.style",
-								"modules.$moduleName.resources.css.mkCheckbox");
+		$styleFileNames = array(
+			"~/layouts/vlayout/modules/$moduleName/resources/css/style.css",
+			"~/layouts/vlayout/modules/$moduleName/resources/css/mkCheckbox.css",
+			);
 		$cssScriptInstances = $this->checkAndConvertCssStyles($styleFileNames);
 		$headerCSSScriptInstances = array_merge($parentCSSScripts, $cssScriptInstances);
 		return $headerCSSScriptInstances;

@@ -23,8 +23,10 @@ class Vtiger_Language_Handler {
 	 * @param <String> $module - module scope in which the translation need to be check
 	 * @return <String> - translated string
 	 */
-	public static function getTranslatedString($key, $module=''){
+	public static function getTranslatedString($key, $module='',$currentLanguage=''){
+        if(empty($currentLanguage)) {
 		$currentLanguage = self::getLanguage();
+        }
 		$translatedString = self::getLanguageTranslatedString($currentLanguage, $key, $module);
 
 		// label not found in users language pack, then check in the default language pack(config.inc.php)
@@ -119,9 +121,9 @@ class Vtiger_Language_Handler {
         $module = str_replace(':', '.', $module);
 		if(empty(self::$languageContainer[$language][$module])){
 
-			//Search in customized folder where the users translated string are placed
-			$qualifiedName = 'languages.'.$language.'.custom.'.$module;
-			$customizedLangFile = Vtiger_Loader::resolveNameToPath($qualifiedName);
+
+
+
 
 			$qualifiedName = 'languages.'.$language.'.'.$module;
 			$file = Vtiger_Loader::resolveNameToPath($qualifiedName);
@@ -133,19 +135,19 @@ class Vtiger_Language_Handler {
 				self::$languageContainer[$language][$module]['jsLanguageStrings'] = $jsLanguageStrings;
 			}
 
-			// Override the user custom strings from the language/custom folder
-			if(file_exists($customizedLangFile)){
-				require $customizedLangFile;
-				$baseModuleStrings = self::$languageContainer[$language][$module]['languageStrings'];
-				if(!$baseModuleStrings) $baseModuleStrings = array();
-				$languageStrings = array_merge($baseModuleStrings, $languageStrings);
-				self::$languageContainer[$language][$module]['languageStrings'] = $languageStrings;
 
-				$baseModuleJSStrings = self::$languageContainer[$language][$module]['jsLanguageStrings'];
-				if(!$baseModuleJSStrings) $baseModuleJSStrings = array();
-				$jsLanguageStrings = array_merge($baseModuleJSStrings, $jsLanguageStrings);
-				self::$languageContainer[$language][$module]['jsLanguageStrings'] = $jsLanguageStrings;
-			}
+
+
+
+
+
+
+
+
+
+
+
+
 		}
 		return self::$languageContainer[$language][$module];
 	}
@@ -164,6 +166,15 @@ class Vtiger_Language_Handler {
 	}
 
 	/**
+	 * Function that returns current language short name
+	 * @return <String> -
+	 */
+	public static function getShortLanguageName() {
+		$language = self::getLanguage();
+		return substr($language, 0, 2);
+	}
+
+	/**
 	 * Function returns module strings
 	 * @param <String> $module - module Name
 	 * @param <String> languageStrings or jsLanguageStrings
@@ -177,8 +188,8 @@ class Vtiger_Language_Handler {
         if($userSelectedLanguage != $defaultLanguage) {
             array_push($languages, $defaultLanguage);
         }
-        
-        
+
+
         $resultantLanguageString = array();
         foreach($languages as $currentLanguage) {
             $exportLangString = array();
@@ -232,7 +243,7 @@ class Vtiger_Language_Handler {
 	}
 }
 
-function vtranslate($key, $moduleName='') {
+function vtranslate($key, $moduleName='',$language='') {
 	$args = func_get_args();
 	return call_user_func_array(array('Vtiger_Language_Handler', 'getTranslatedString'), $args);
 }

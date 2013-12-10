@@ -123,14 +123,31 @@ class Activity extends CRMEntity {
 		{
 			$this->deleteRelation("vtiger_seactivityrel");
 		}
-		//Insert into cntactivity rel		
-		if(isset($this->column_fields['contact_id']) && $this->column_fields['contact_id'] != '')
-		{
-			$this->insertIntoEntityTable('vtiger_cntactivityrel', $module);
-		}
-		elseif($this->column_fields['contact_id'] =='' && $insertion_mode=="edit")
-		{
-			$this->deleteRelation('vtiger_cntactivityrel');
+        //Insert into cntactivity rel            
+        if(isset($this->column_fields['contact_id']) && $this->column_fields['contact_id'] != '') 
+        { 
+                $this->insertIntoEntityTable('vtiger_cntactivityrel', $module); 
+        } 
+        elseif($this->column_fields['contact_id'] =='' && $insertion_mode=="edit") 
+        { 
+                $this->deleteRelation('vtiger_cntactivityrel'); 
+        } 
+		$recordId = $this->id;
+		if(isset($_REQUEST['contactidlist']) && $_REQUEST['contactidlist'] != '') {
+			$adb->pquery( 'DELETE from vtiger_cntactivityrel WHERE activityid = ?', array($recordId));
+		
+
+			$contactIdsList = explode (';', $_REQUEST['contactidlist']);
+			$count = count($contactIdsList);
+
+			$sql = 'INSERT INTO vtiger_cntactivityrel VALUES ';
+			for($i=0; $i<$count; $i++) {
+				$sql .= " ($contactIdsList[$i], $recordId)";
+				if ($i != $count - 1) {
+					$sql .= ',';
+				}
+			}
+			$adb->pquery($sql, array());
 		}
 		$recur_type='';	
 		if(($recur_type == "--None--" || $recur_type == '') && $this->mode == "edit")
@@ -1040,10 +1057,14 @@ function insertIntoRecurringTable(& $recurObj)
 		$db = PearDatabase::getInstance();
 		$result = $db->pquery($query, array());
 		if(is_object($result)) {
-			$query = "create temporary table IF NOT EXISTS $tableName(id int(11) primary key, shared ".
-			"int(1) default 0) replace select 1, userid as id from vtiger_sharedcalendar where ".
-			"sharedid = $user->id";
-			$result = $db->pquery($query, array());
+			$query = "REPLACE INTO $tableName (id) SELECT userid as id FROM vtiger_sharedcalendar WHERE sharedid = ?";
+			$result = $db->pquery($query, array($user->id));
+			
+			//For newly created users, entry will not be there in vtiger_sharedcalendar table
+			//so, consider the users whose having the calendarsharedtype is public
+			$query = "REPLACE INTO $tableName (id) SELECT id FROM vtiger_users WHERE calendarsharedtype = ?";
+			$result = $db->pquery($query, array('public'));
+			
 			if(is_object($result)) {
 				return true;
 			}

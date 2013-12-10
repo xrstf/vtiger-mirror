@@ -75,8 +75,8 @@ class Campaigns extends CRMEntity {
 
 	// For Alphabetical search
 	var $def_basicsearch_col = 'campaignname';
-	
-	function Campaigns() 
+
+	function Campaigns()
 	{
 		$this->log =LoggerManager::getLogger('campaign');
 		$this->db = PearDatabase::getInstance();
@@ -166,6 +166,7 @@ class Campaigns extends CRMEntity {
 				FROM vtiger_account
 				INNER JOIN vtiger_campaignaccountrel ON vtiger_campaignaccountrel.accountid = vtiger_account.accountid
 				INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_account.accountid
+				INNER JOIN vtiger_accountshipads ON vtiger_accountshipads.accountaddressid = vtiger_account.accountid
 				LEFT JOIN vtiger_groups ON vtiger_groups.groupid=vtiger_crmentity.smownerid
 				LEFT JOIN vtiger_users ON vtiger_crmentity.smownerid=vtiger_users.id
 				LEFT JOIN vtiger_accountbillads ON vtiger_accountbillads.accountaddressid = vtiger_account.accountid
@@ -266,6 +267,7 @@ class Campaigns extends CRMEntity {
 				INNER JOIN vtiger_contactsubdetails ON vtiger_contactdetails.contactid = vtiger_contactsubdetails.contactsubscriptionid
 				INNER JOIN vtiger_customerdetails ON vtiger_contactdetails.contactid = vtiger_customerdetails.customerid
 				INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_contactdetails.contactid
+				LEFT JOIN vtiger_contactscf ON vtiger_contactdetails.contactid = vtiger_contactscf.contactid
 				LEFT JOIN vtiger_groups ON vtiger_groups.groupid=vtiger_crmentity.smownerid
 				LEFT JOIN vtiger_users ON vtiger_crmentity.smownerid=vtiger_users.id
 				LEFT JOIN vtiger_account ON vtiger_account.accountid = vtiger_contactdetails.accountid
@@ -423,7 +425,7 @@ class Campaigns extends CRMEntity {
 		$userNameSql = getSqlForNameInDisplayFormat(array('first_name'=>
 							'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'), 'Users');
 		$query = "SELECT CASE when (vtiger_users.user_name not like '') then $userNameSql else vtiger_groups.groupname end as user_name,
-					vtiger_potential.related_to, vtiger_account.accountname, vtiger_potential.potentialid, vtiger_potential.potentialname,
+					vtiger_potential.related_to, vtiger_potential.contact_id, vtiger_account.accountname, vtiger_potential.potentialid, vtiger_potential.potentialname,
 					vtiger_potential.potentialtype, vtiger_potential.sales_stage, vtiger_potential.amount, vtiger_potential.closingdate,
 					vtiger_crmentity.crmid, vtiger_crmentity.smownerid FROM vtiger_campaign
 					INNER JOIN vtiger_potential ON vtiger_campaign.campaignid = vtiger_potential.campaignid
@@ -432,6 +434,7 @@ class Campaigns extends CRMEntity {
 					LEFT JOIN vtiger_groups ON vtiger_groups.groupid=vtiger_crmentity.smownerid
 					LEFT JOIN vtiger_users ON vtiger_users.id=vtiger_crmentity.smownerid
 					LEFT JOIN vtiger_account ON vtiger_account.accountid = vtiger_potential.related_to
+					LEFT JOIN vtiger_contactdetails ON vtiger_contactdetails.contactid = vtiger_potential.contact_id
 					WHERE vtiger_campaign.campaignid = ".$id." AND vtiger_crmentity.deleted=0";
 
 		$return_value = GetRelatedList($this_module, $related_module, $other, $query, $button, $returnset);
@@ -496,7 +499,8 @@ class Campaigns extends CRMEntity {
 			vtiger_crmentity.crmid, vtiger_crmentity.smownerid,
 			vtiger_crmentity.modifiedtime,
 			CASE when (vtiger_users.user_name not like '') then $userNameSql else vtiger_groups.groupname end as user_name,
-			vtiger_recurringevents.recurringtype
+			vtiger_recurringevents.recurringtype,
+			CASE WHEN (vtiger_activity.activitytype = 'Task') THEN vtiger_activity.status ELSE vtiger_activity.eventstatus END AS status
 			FROM vtiger_activity
 			INNER JOIN vtiger_seactivityrel
 				ON vtiger_seactivityrel.activityid = vtiger_activity.activityid
@@ -569,14 +573,14 @@ class Campaigns extends CRMEntity {
 	function generateReportsSecQuery($module,$secmodule,$queryplanner){
 		$matrix = $queryplanner->newDependencyMatrix();
         $matrix->setDependency('vtiger_crmentityCampaigns',array('vtiger_groupsCampaigns','vtiger_usersCampaignss','vtiger_lastModifiedByCampaigns','vtiger_campaignscf'));
-        $matrix->setDependency('vtiger_Campaigns', array('vtiger_crmentityCampaigns','vtiger_productsCampaigns'));
-		
+        $matrix->setDependency('vtiger_campaign', array('vtiger_crmentityCampaigns','vtiger_productsCampaigns'));
+
 		if (!$queryplanner->requireTable("vtiger_campaign",$matrix)){
 			return '';
 		}
-		
+
 		$query = $this->getRelationQuery($module,$secmodule,"vtiger_campaign","campaignid", $queryplanner);
-		
+
 		if ($queryplanner->requireTable("vtiger_crmentityCampaigns",$matrix)){
 			$query .=" left join vtiger_crmentity as vtiger_crmentityCampaigns on vtiger_crmentityCampaigns.crmid=vtiger_campaign.campaignid and vtiger_crmentityCampaigns.deleted=0";
 		}

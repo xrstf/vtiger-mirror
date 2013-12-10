@@ -83,17 +83,26 @@ class HelpDesk_Module_Model extends Vtiger_Module_Model {
 	 * @param type $data
 	 * @return <Array>
 	 */
-	public function getTicketsByStatus($owner) {
+	public function getTicketsByStatus($owner, $dateFilter) {
 		$db = PearDatabase::getInstance();
 
 		$ownerSql = $this->getOwnerWhereConditionForDashBoards($owner);
 		if(!empty($ownerSql)) {
 			$ownerSql = ' AND '.$ownerSql;
 		}
-
+		
+		$params = array();
+		if(!empty($dateFilter)) {
+			$dateFilterSql = ' AND createdtime BETWEEN ? AND ? ';
+			//client is not giving time frame so we are appending it
+			$params[] = $dateFilter['start']. ' 00:00:00';
+			$params[] = $dateFilter['end']. ' 23:59:59';
+		}
+		
 		$result = $db->pquery('SELECT COUNT(*) as count, CASE WHEN vtiger_troubletickets.status IS NULL OR vtiger_troubletickets.status = "" THEN "" ELSE vtiger_troubletickets.status END AS statusvalue 
 							FROM vtiger_troubletickets INNER JOIN vtiger_crmentity ON vtiger_troubletickets.ticketid = vtiger_crmentity.crmid AND vtiger_crmentity.deleted=0
-								'.Users_Privileges_Model::getNonAdminAccessControlQuery($this->getName()). $ownerSql .' GROUP BY statusvalue', array());
+							'.Users_Privileges_Model::getNonAdminAccessControlQuery($this->getName()). $ownerSql .' '.$dateFilterSql.
+							' INNER JOIN vtiger_ticketstatus ON vtiger_troubletickets.status = vtiger_ticketstatus.ticketstatus GROUP BY statusvalue ORDER BY vtiger_ticketstatus.sortorderid', $params);
 
 		$response = array();
 
@@ -122,8 +131,9 @@ class HelpDesk_Module_Model extends Vtiger_Module_Model {
 			$userNameSql = getSqlForNameInDisplayFormat(array('first_name' => 'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'), 'Users');
 
 			$query = "SELECT CASE WHEN (vtiger_users.user_name not like '') THEN $userNameSql ELSE vtiger_groups.groupname END AS user_name,
-						vtiger_crmentity.*, vtiger_activity.*, vtiger_seactivityrel.crmid AS parent_id,
-						CASE WHEN (vtiger_activity.activitytype = 'Task') THEN vtiger_activity.status ELSE vtiger_activity.eventstatus END AS status
+						vtiger_crmentity.*, vtiger_activity.activitytype, vtiger_activity.subject, vtiger_activity.date_start, vtiger_activity.time_start,
+						vtiger_activity.recurringtype, vtiger_activity.due_date, vtiger_activity.time_end, vtiger_seactivityrel.crmid AS parent_id,
+						CASE WHEN (vtiger_activity.activitytype = 'Task') THEN (vtiger_activity.status) ELSE (vtiger_activity.eventstatus) END AS status
 						FROM vtiger_activity
 						INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_activity.activityid
 						LEFT JOIN vtiger_seactivityrel ON vtiger_seactivityrel.activityid = vtiger_activity.activityid

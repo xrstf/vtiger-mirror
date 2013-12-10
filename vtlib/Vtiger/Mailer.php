@@ -52,6 +52,16 @@ class Vtiger_Mailer extends PHPMailer {
 			$this->Username = decode_html($adb->query_result($result, 0, 'server_username'));
 			$this->Password = decode_html($adb->query_result($result, 0, 'server_password'));
 			$this->SMTPAuth = $adb->query_result($result, 0, 'smtp_auth');
+            
+            // To support TLS
+            $hostinfo = explode("://", $this->Host);
+            $smtpsecure = $hostinfo[0];
+            if($smtpsecure == 'tls'){
+                $this->SMTPSecure = $smtpsecure;
+                $this->Host = $hostinfo[1];
+            }
+            // End
+            
 			if(empty($this->SMTPAuth)) $this->SMTPAuth = false;
 
 			$this->ConfigSenderInfo($adb->query_result($result, 0, 'from_email_field'));
@@ -66,13 +76,11 @@ class Vtiger_Mailer extends PHPMailer {
 	 * @access private
 	 */
 	function reinitialize() {
-		$this->to = Array();
-		$this->cc = Array();
-		$this->bcc = Array();
-		$this->ReplyTo = Array();
+		$this->ClearAllRecipients();
+		$this->ClearReplyTos();
 		$this->Body = '';
 		$this->Subject ='';
-		$this->attachment = Array();
+		$this->ClearAttachments();
 	}
 
 	/**

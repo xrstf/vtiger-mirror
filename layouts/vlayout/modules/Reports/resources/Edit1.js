@@ -73,13 +73,6 @@ Reports_Edit_Js("Reports_Edit1_Js",{},{
 
 	loadRelatedModules : function(primaryModule){
 		var relatedModulesMapping = this.getRelatedModulesFromPrimaryModule(primaryModule);
-		
-		//for none in primary module
-		if(typeof relatedModulesMapping == 'undefined') {
-			relatedModulesMapping = {};
-			relatedModulesMapping['none'] = 'None';
-		}
-		
 		var options = '';
 		for(var key in relatedModulesMapping) {
 			//IE Browser consider the prototype properties also, it should consider has own properties only.
@@ -110,7 +103,8 @@ Reports_Edit_Js("Reports_Edit1_Js",{},{
 			'module' : moduleName,
 			'action' : "CheckDuplicate",
 			'reportname' : details.reportName,
-			'record' : details.reportId
+			'record' : details.reportId,
+			'isDuplicate' : details.isDuplicate
 		}
 		
 		AppConnector.request(params).then(
@@ -138,7 +132,7 @@ Reports_Edit_Js("Reports_Edit1_Js",{},{
 		var formData = form.serializeFormData();
 		
 		var params = {};
-		var reportName = formData.reportname;
+		var reportName = jQuery.trim(formData.reportname);
 		var reportId = formData.record;
 		
 		var progressIndicatorElement = jQuery.progressIndicator({
@@ -150,7 +144,8 @@ Reports_Edit_Js("Reports_Edit1_Js",{},{
 		
 		thisInstance.checkDuplicateName({
 			'reportName' : reportName, 
-			'reportId' : reportId
+			'reportId' : reportId,
+			'isDuplicate' : formData.isDuplicate
 		}).then(
 			function(data){
 				AppConnector.request(formData).then(

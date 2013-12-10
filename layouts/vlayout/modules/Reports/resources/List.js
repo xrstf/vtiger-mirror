@@ -66,12 +66,24 @@ Vtiger_List_Js("Reports_List_Js",{
 			var selectedIds = listInstance.readSelectedIds(true);
 			var excludedIds = listInstance.readExcludedIds(true);
 			var cvId = listInstance.getCurrentCvId();
+			
 			var message = app.vtranslate('LBL_DELETE_CONFIRMATION');
 			Vtiger_Helper_Js.showConfirmationBox({'message' : message}).then(
 				function(e) {
 					var deleteURL = url+'&viewname='+cvId+'&selected_ids='+selectedIds+'&excluded_ids='+excludedIds;
+					var deleteMessage = app.vtranslate('JS_RECORDS_ARE_GETTING_DELETED');
+					var progressIndicatorElement = jQuery.progressIndicator({
+						'message' : deleteMessage,
+						'position' : 'html',
+						'blockInfo' : {
+							'enabled' : true
+						}
+					});
 					AppConnector.request(deleteURL).then(
 						function(data) {
+							progressIndicatorElement.progressIndicator({
+								'mode' : 'hide'
+							})
 							if(data){
 								listInstance.massActionPostOperations(data);
 							}
@@ -189,10 +201,15 @@ Vtiger_List_Js("Reports_List_Js",{
 			var module = app.getModuleName();
 			AppConnector.request('index.php?module='+module+'&view=List&viewname='+cvId).then(
 				function(data) {
+					jQuery('#recordsCount').val('');
+					jQuery('#totalPageCount').text('');
 					app.hideModalWindow();
 					var listViewContainer = thisInstance.getListViewContentContainer();
 					listViewContainer.html(data);
 					jQuery('#deSelectAllMsg').trigger('click');
+					thisInstance.calculatePages().then(function(){
+						thisInstance.updatePagination();
+					});
 				});
 		} else {
 			app.hideModalWindow();

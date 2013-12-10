@@ -11,11 +11,11 @@
 -->*}
 {strip}
 <div class='modelContainer'>
-	<div class="modal-header">
-		<button data-dismiss="modal" class="close" title="{vtranslate('LBL_CLOSE')}">x</button>
+	<div class="modal-header contentsBackground">
+        <button data-dismiss="modal" class="close" title="{vtranslate('LBL_CLOSE')}">&times;</button>
 		<h3>{vtranslate('LBL_MERGING_CRITERIA_SELECTION', $MODULE)}</h3>
 	</div>
-	<form class="form-horizontal contentsBackground" id="findDuplicate" action="index.php">
+	<form class="form-horizontal" id="findDuplicate" action="index.php">
 		<input type='hidden' name='module' value='{$MODULE}' />
 		<input type='hidden' name='view' value='FindDuplicates' />
 		<br>
@@ -35,6 +35,9 @@
 							{/foreach}
 						</select>
 					</span>
+				</div>
+				<div class="row-fluid">
+					<label><input type="checkbox" name="ignoreEmpty" checked /><span class="alignMiddle">&nbsp;{vtranslate('LBL_IGNORE_EMPTY_VALUES', $MODULE)}</span></label
 				</div>
 			</div>
 		</div>

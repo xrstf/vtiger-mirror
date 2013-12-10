@@ -22,42 +22,24 @@
 			<input type="hidden" name="sourceRecord" value="{$SOURCE_RECORD}" />
 			<input type="hidden" name="relationOperation" value="{$IS_RELATION_OPERATION}" />
 		{/if}
+		{assign var=WIDTHTYPE value=$USER_MODEL->get('rowheight')}
 		<div class="contentHeader row-fluid">
 		{assign var=SINGLE_MODULE_NAME value='Single_'|cat:$MODULE}
 			<span class="span8">
 		{if $RECORD_ID neq ''}
-			<span class="span8 font-x-x-large" title='{vtranslate('LBL_EDITING', $MODULE)} {vtranslate($SINGLE_MODULE_NAME, $MODULE)} "{$RECORD_STRUCTURE_MODEL->getRecordName()}"'>{vtranslate('LBL_EDITING', $MODULE)} {vtranslate($SINGLE_MODULE_NAME, $MODULE)} "{$RECORD_STRUCTURE_MODEL->getRecordName()}"</span>
+			<h3 class="span8 marginLeftZero" title='{vtranslate('LBL_EDITING', $MODULE)} {vtranslate($SINGLE_MODULE_NAME, $MODULE)} "{$RECORD_STRUCTURE_MODEL->getRecordName()}"'>{vtranslate('LBL_EDITING', $MODULE)} {vtranslate($SINGLE_MODULE_NAME, $MODULE)} "{$RECORD_STRUCTURE_MODEL->getRecordName()}"</h3>
 		{else}
-			<span class="span8 font-x-x-large" title="{vtranslate('LBL_CREATING_NEW', $MODULE)} {vtranslate($SINGLE_MODULE_NAME, $MODULE)}">{vtranslate('LBL_CREATING_NEW', $MODULE)} {vtranslate($SINGLE_MODULE_NAME, $MODULE)}</span>
+			<h3 class="span8 marginLeftZero" title="{vtranslate('LBL_CREATING_NEW', $MODULE)} {vtranslate($SINGLE_MODULE_NAME, $MODULE)}">{vtranslate('LBL_CREATING_NEW', $MODULE)} {vtranslate($SINGLE_MODULE_NAME, $MODULE)}</h3>
 		{/if}
 			</span>
 			<span class="span4">
 				<span class="pull-right" style="padding-right: 15px">
-					{if $IS_PREFERENCE && $RECORD_ID == $USER_MODEL->getId()}
-						<div class='btn-group' title="{vtranslate('LBL_DISPLAY_TYPE', 'Vtiger')}" style="float:left">
-							<a class='btn dropdown-toggle' data-toggle='dropdown' href='#'>
-								<span id='currentWidthType'><i class='icon-th-list'></i></span>&nbsp;<span class='caret'></span>
-							</a>
-							<ul class='dropdown-menu pull-right' id='widthType'>
-								<li class="cursorPointer" data-class='wideWidthType' title="{vtranslate('LBL_DISPLAY_WIDETYPE', 'Vtiger')}">
-									<i class='icon-th-list'></i>  {vtranslate('LBL_DISPLAY_WIDETYPE', 'Vtiger')}
-								</li>
-								<li class="cursorPointer" data-class='mediumWidthType' title="{vtranslate('LBL_DISPLAY_MEDIUMTYPE', 'Vtiger')}">
-									<i class='icon-list'></i>  {vtranslate('LBL_DISPLAY_MEDIUMTYPE', 'Vtiger')}
-								</li>
-								<li class="cursorPointer" data-class='narrowWidthType' title="{vtranslate('LBL_DISPLAY_NARROWTYPE', 'Vtiger')}">
-									<i class='icon-list-alt'></i>  {vtranslate('LBL_DISPLAY_NARROWTYPE', 'Vtiger')}
-								</li>
-							</ul>
-						</div>
-						&nbsp;&nbsp;
-					{/if}
 					<button class="btn btn-success" type="submit"><strong>{vtranslate('LBL_SAVE', $MODULE)}</strong></button>
 					<a class="cancelLink" type="reset" onclick="javascript:window.history.back();">{vtranslate('LBL_CANCEL', $MODULE)}</a>
 				</span>
 			</span>
 		</div>
-		<div style='padding:10px'>
+		<div>
 			{foreach key=BLOCK_LABEL item=BLOCK_FIELDS from=$RECORD_STRUCTURE}
 				<table class="table table-bordered marginLeftZero">
 				{if $BLOCK_FIELDS|@count gt 0}
@@ -76,7 +58,7 @@
 					{else}
 						{assign var=COUNTER value=$COUNTER+1}
 					{/if}
-					<td class="fieldLabel">
+					<td class="fieldLabel {$WIDTHTYPE}">
 					{if {$isReferenceField} eq "reference"}
 						{if $refrenceListCount > 1}
 							<select style="width: 150px;" class="chzn-select" id="referenceModulesList">
@@ -93,13 +75,14 @@
 					{/if}
 					{if $FIELD_MODEL->isMandatory() eq true} <span class="redColor">*</span> {/if}
 					</td>
-					<td class="fieldValue" {if $FIELD_MODEL->get('uitype') eq '19'} colspan="3" {assign var=COUNTER value=$COUNTER+1} {/if}>
+					<td class="fieldValue {$WIDTHTYPE}" {if $FIELD_MODEL->get('uitype') eq '19'} colspan="3" {assign var=COUNTER value=$COUNTER+1} {/if}>
 						{include file=$FIELD_MODEL->getUITypeModel()->getTemplateName()|@vtemplate_path}
 					</td>
 				{/foreach}
 				</tr>
 				{/if}
 				</table>
+                                <br>
 			{/foreach}
 
 			{* tag cloud starts *}
@@ -108,12 +91,13 @@
 					<th colspan="4">{vtranslate('LBL_TAG_CLOUD_DISPLAY', $MODULE)}</th>
 				</tr>
 				<tr>
-					<td class="fieldLabel">{vtranslate('LBL_TAG_CLOUD', $MODULE)}</td>
-					<td class="fieldValue">
-						<input type="checkbox" name="tagcloudview" {if $TAG_CLOUD} checked {/if} />
-					</td><td></td><td></td><td></td>
+					<td class="fieldLabel {$WIDTHTYPE}">{vtranslate('LBL_TAG_CLOUD', $MODULE)}</td>
+					<td class="fieldValue {$WIDTHTYPE}">
+						<label><input type="checkbox" name="tagcloudview" {if $TAG_CLOUD} checked {/if} /></label>
+					</td><td class="{$WIDTHTYPE}"></td><td class="{$WIDTHTYPE}"></td>
 				</tr>
 			</table>
+                        <br>
 			{* tag cloud ends *}
 
 			<div class='pull-right'>

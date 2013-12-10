@@ -30,7 +30,7 @@ $languageStrings = array(
 	'Recurrence' => 'Recurrence',
 	'Send Notification' => 'Send Notification',
 	'Location'=>'Location',
-	'Send Reminder' => 'Send Reminder',
+	'Send Reminder' => 'Send Email Reminder Before',
 	'End Date & Time' => 'End Date & Time',
 	'Activity Type'=>'Activity Type',
 	'Visibility' => 'Visibility',
@@ -92,6 +92,7 @@ $languageStrings = array(
 	'LBL_CALENDAR_VIEW' => 'Calendar View',
 
     'LBL_INVITE_USER_BLOCK' => 'Invite',
-    'LBL_INVITE_USERS' => 'Invite Users'
+    'LBL_INVITE_USERS' => 'Invite Users',
+	'INVITATION'=>' Invitation ',
 
 );

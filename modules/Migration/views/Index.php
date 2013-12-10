@@ -79,8 +79,8 @@ class Migration_Index_View extends Vtiger_Basic_View {
 		$moduleModel = Migration_Module_Model::getInstance();
 
 		$getAllowedMigrationVersions = $moduleModel->getAllowedMigrationVersions();
-		$getDBVersion = str_replace('.','', $moduleModel->getDBVersion());
-		$getLatestSourceVersion = str_replace('.','', $moduleModel->getLatestSourceVersion());
+		$getDBVersion = str_replace(array('.', ' '),'', $moduleModel->getDBVersion());
+		$getLatestSourceVersion = str_replace(array('.', ' '),'', $moduleModel->getLatestSourceVersion());
 		$migrateVersions = array();
 		foreach($getAllowedMigrationVersions as $version => $label) {
 			if($version == $getDBVersion || $reach == 1) {
@@ -92,7 +92,7 @@ class Migration_Index_View extends Vtiger_Basic_View {
 
 		$patchCount  = count($migrateVersions);
 
-		define(VTIGER_UPGRADE, true);
+		define('VTIGER_UPGRADE', true);
 
 		for($i=0; $i<$patchCount; $i++){
 			$filename =  "modules/Migration/schema/".$migrateVersions[$i]."_to_".$migrateVersions[$i+1].".php";
@@ -101,9 +101,11 @@ class Migration_Index_View extends Vtiger_Basic_View {
 					echo "<table class='config-table'><tr><th><span><b><font color='red'>".$migrateVersions[$i]." ==> ".$migrateVersions[$i+1]." Database changes -- Starts. </font></b></span></th></tr></table>";
 					echo "<table class='config-table'>";
 				}
+				$_i_statesaved = $i;
 				include($filename);
+				$i = $_i_statesaved;
 				if(!defined('INSTALLATION_MODE')) {
-					echo -"<table class='config-table'><tr><th><span><b><font color='red'>".$migrateVersions[$i]." ==> ".$migrateVersions[$i+1]." Database changes -- Ends.</font></b></span></th></tr></table>";
+					echo "<table class='config-table'><tr><th><span><b><font color='red'>".$migrateVersions[$i]." ==> ".$migrateVersions[$i+1]." Database changes -- Ends.</font></b></span></th></tr></table>";
 				}
 			} else if(isset($migrateVersions[$patchCount+1])){
 				echo "<table class='config-table'><tr><th><span><b><font color='red'> There is no Database Changes from ".$migrateVersions[$i]." ==> ".$migrateVersions[$i+1]."</font></b></span></th></tr></table>";
@@ -122,11 +124,12 @@ class Migration_Index_View extends Vtiger_Basic_View {
 		if(!defined('INSTALLATION_MODE')) {
 			$query = $adb->convert2sql($query, $params);
 			if(is_object($status)) {
-				echo '<tr><td width="80%"><span>'.$query.'</span></td><td><b><font color="green"> Success </font></b></td></tr>';
+				echo '<tr><td width="80%"><span>'.$query.'</span></td><td style="color:green">Success</td></tr>';
 			} else {
-				echo '<tr><td width="80%"><span>'.$query.'</span></td><td><b><font color="red"> Fail </font></b></td></tr>';
+				echo '<tr><td width="80%"><span>'.$query.'</span></td><td style="color:red">Failure</td></tr>';
 			}
 		}
+		return $status;
 	}
 
 	public static function insertSelectQuery() {
@@ -174,5 +177,62 @@ class Migration_Index_View extends Vtiger_Basic_View {
 			$conditionExpression = implode(' and ', $columnIndexArray);
 			self::ExecuteQuery('INSERT INTO vtiger_relcriteria_grouping VALUES(?,?,?,?)', array(1, $queryid, '', $conditionExpression));
 		}
+	}
+	
+		/**
+	 * Function to transform workflow filter of old look in to new look
+	 * @param <type> $conditions
+	 * @return <type>
+	 */
+	public static function transformAdvanceFilterToWorkFlowFilter($conditions) {
+		$wfCondition = array();
+
+		if(!empty($conditions)) {
+			$previousConditionGroupId = 0;
+			foreach($conditions as $condition) {
+
+				$fieldName = $condition['fieldname'];
+				$fieldNameContents = explode(' ', $fieldName);
+				if (count($fieldNameContents) > 1) {
+					$fieldName = '('. $fieldName .')';
+				}
+
+				$groupId = $condition['groupid'];
+				if (!$groupId) {
+					$groupId = 0;
+				}
+
+				$groupCondition = 'or';
+				if ($groupId === $previousConditionGroupId || count($conditions) === 1) {
+					$groupCondition = 'and';
+				}
+
+				$joinCondition = 'or';
+				if (isset ($condition['joincondition'])) {
+					$joinCondition = $condition['joincondition'];
+				} elseif($groupId === 0) {
+					$joinCondition = 'and';
+				}
+
+				$value = $condition['value'];
+				switch ($value) {
+					case 'false:boolean'	: $value = 0;	break;
+					case 'true:boolean'		: $value = 1;	break;
+					default					: $value;		break;
+				}
+
+				$wfCondition[] = array(
+						'fieldname' => $fieldName,
+						'operation' => $condition['operation'],
+						'value' => $value,
+						'valuetype' => 'rawtext',
+						'joincondition' => $joinCondition,
+						'groupjoin' => $groupCondition,
+						'groupid' => $groupId
+				);
+				$previousConditionGroupId = $groupId;
+			}
+		}
+		return $wfCondition;
 	}
 }

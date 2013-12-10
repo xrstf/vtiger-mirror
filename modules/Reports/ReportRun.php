@@ -220,10 +220,10 @@ class ReportRun extends CRMEntity
 
     // All UItype 72 fields are added here so that in reports the values are append currencyId::value
 	var $append_currency_symbol_to_value = array('Products_Unit_Price','Services_Price',
-						'Invoice_Total', 'Invoice_Sub_Total', 'Invoice_S&H_Amount', 'Invoice_Discount_Amount', 'Invoice_Adjustment',
-						'Quotes_Total', 'Quotes_Sub_Total', 'Quotes_S&H_Amount', 'Quotes_Discount_Amount', 'Quotes_Adjustment',
-						'SalesOrder_Total', 'SalesOrder_Sub_Total', 'SalesOrder_S&H_Amount', 'SalesOrder_Discount_Amount', 'SalesOrder_Adjustment',
-						'PurchaseOrder_Total', 'PurchaseOrder_Sub_Total', 'PurchaseOrder_S&H_Amount', 'PurchaseOrder_Discount_Amount', 'PurchaseOrder_Adjustment',
+						'Invoice_Total', 'Invoice_Sub_Total', 'Invoice_Pre_Tax_Total', 'Invoice_S&H_Amount', 'Invoice_Discount_Amount', 'Invoice_Adjustment',
+						'Quotes_Total', 'Quotes_Sub_Total', 'Quotes_Pre_Tax_Total', 'Quotes_S&H_Amount', 'Quotes_Discount_Amount', 'Quotes_Adjustment',
+						'SalesOrder_Total', 'SalesOrder_Sub_Total', 'SalesOrder_Pre_Tax_Total', 'SalesOrder_S&H_Amount', 'SalesOrder_Discount_Amount', 'SalesOrder_Adjustment',
+						'PurchaseOrder_Total', 'PurchaseOrder_Sub_Total', 'PurchaseOrder_Pre_Tax_Total', 'PurchaseOrder_S&H_Amount', 'PurchaseOrder_Discount_Amount', 'PurchaseOrder_Adjustment',
                         'Invoice_Received','PurchaseOrder_Paid','Invoice_Balance','PurchaseOrder_Balance'
 						);
 	var $ui10_fields = array();
@@ -449,8 +449,8 @@ class ReportRun extends CRMEntity
 							$columnslist[$fieldcolname] = "vtiger_service{$module}.servicename as '" . $header_label ."'";
 							$this->queryPlanner->addTable("vtiger_service{$module}");
 						} else if($selectedfields[1] == 'listprice') {
-							$primaryModuleInstance = CRMEntity::getInstance($this->primarymodule);
-							$columnslist[$fieldcolname] = $selectedfields[0].$module.".".$selectedfields[1]."/".$primaryModuleInstance->table_name.".conversion_rate as '".$header_label."'";
+							$moduleInstance = CRMEntity::getInstance($module);
+							$columnslist[$fieldcolname] = $selectedfields[0].$module.".".$selectedfields[1]."/".$moduleInstance->table_name.".conversion_rate as '".$header_label."'";
 							$this->queryPlanner->addTable($selectedfields[0].$module);
 						} else {
 							$columnslist[$fieldcolname] = $selectedfields[0].$module.".".$selectedfields[1]." as '".$header_label."'";
@@ -860,6 +860,62 @@ class ReportRun extends CRMEntity
 					$columncondition = $columninfo["column_condition"];
 
 					if($fieldcolname != "" && $comparator != "") {
+						if(in_array($comparator, $dateSpecificConditions)) {
+							if($fieldcolname != 'none') {
+								$selectedFields = explode(':',$fieldcolname);
+								if($selectedFields[0] == 'vtiger_crmentity'.$this->primarymodule) {
+									$selectedFields[0] = 'vtiger_crmentity';
+								}
+
+								if($comparator != 'custom') {
+									list($startDate, $endDate) = $this->getStandarFiltersStartAndEndDate($comparator);
+								} else {
+                                    list($startDateTime, $endDateTime) = explode(',', $value);
+									list($startDate, $startTime) = explode(' ', $startDateTime);
+									list($endDate, $endTime) = explode(' ', $endDateTime);
+                                }
+
+								$type = $selectedFields[4];
+								if($startDate != '0000-00-00' && $endDate != '0000-00-00' && $startDate != '' && $endDate != '') {
+									$startDateTime = new DateTimeField($startDate. ' ' .date('H:i:s'));
+									$userStartDate = $startDateTime->getDisplayDate();
+									if($type == 'DT') {
+										$userStartDate = $userStartDate.' 00:00:00';
+									}
+									$startDateTime = getValidDBInsertDateTimeValue($userStartDate);
+
+									$endDateTime = new DateTimeField($endDate. ' ' .date('H:i:s'));
+									$userEndDate = $endDateTime->getDisplayDate();
+									if($type == 'DT') {
+										$userEndDate = $userEndDate.' 23:59:59';
+									}
+									$endDateTime = getValidDBInsertDateTimeValue($userEndDate);
+
+									if ($selectedFields[1] == 'birthday') {
+										$tableColumnSql = 'DATE_FORMAT(' . $selectedFields[0] . '.' . $selectedFields[1] . ', "%m%d")';
+										$startDateTime = "DATE_FORMAT('$startDateTime', '%m%d')";
+										$endDateTime = "DATE_FORMAT('$endDateTime', '%m%d')";
+									} else {
+										if($selectedFields[0] == 'vtiger_activity' && ($selectedFields[1] == 'date_start')) {
+											$tableColumnSql = 'CAST((CONCAT(date_start, " ", time_start)) AS DATETIME)';
+										} else {
+											$tableColumnSql = $selectedFields[0]. '.' .$selectedFields[1];
+										}
+										$startDateTime = "'$startDateTime'";
+										$endDateTime = "'$endDateTime'";
+									}
+
+									$advfiltergroupsql .= "$tableColumnSql BETWEEN $startDateTime AND $endDateTime";
+									if(!empty($columncondition)) {
+										$advfiltergroupsql .= ' '.$columncondition.' ';
+									}
+
+									$this->queryPlanner->addTable($selectedFields[0]);
+								}
+							}
+							continue;
+                        }
+
 						$selectedfields = explode(":",$fieldcolname);
 						$moduleFieldLabel = $selectedfields[2];
 						list($moduleName, $fieldLabel) = explode('_', $moduleFieldLabel, 2);
@@ -886,10 +942,10 @@ class ReportRun extends CRMEntity
 									$endDateTimeComponents = explode(' ',$valueComponents[1]);
 									$columninfo['startdate'] = DateTimeField::convertToDBFormat($startDateTimeComponents[0]);
 									$columninfo['enddate'] = DateTimeField::convertToDBFormat($endDateTimeComponents[0]);
-								} else {	
-                                $columninfo['startdate'] = DateTimeField::convertToDBFormat($valueComponents[0]);
-                                $columninfo['enddate'] = DateTimeField::convertToDBFormat($valueComponents[1]);
-                            }
+								} else {
+									$columninfo['startdate'] = DateTimeField::convertToDBFormat($valueComponents[0]);
+									$columninfo['enddate'] = DateTimeField::convertToDBFormat($valueComponents[1]);
+								}
                             }
                             $dateFilterResolvedList = $customView->resolveDateFilterValue($columninfo);
                             $startDate = DateTimeField::convertToDBFormat($dateFilterResolvedList['startdate']);
@@ -906,7 +962,7 @@ class ReportRun extends CRMEntity
 
 		                		if(($selectedfields[0] == "vtiger_users".$this->primarymodule || $selectedfields[0] == "vtiger_users".$this->secondarymodule) && $selectedfields[1] == 'user_name') {
 									$module_from_tablename = str_replace("vtiger_users","",$selectedfields[0]);
-									$advcolsql[] = " trim($concatSql)".$this->getAdvComparator($comparator,trim($valuearray[$n]),$datatype)." or vtiger_groups".$module_from_tablename.".groupname ".$this->getAdvComparator($comparator,trim($valuearray[$n]),$datatype);
+									$advcolsql[] = " (trim($concatSql)".$this->getAdvComparator($comparator,trim($valuearray[$n]),$datatype)." or vtiger_groups".$module_from_tablename.".groupname ".$this->getAdvComparator($comparator,trim($valuearray[$n]),$datatype).")";
 									$this->queryPlanner->addTable("vtiger_groups".$module_from_tablename);
 								} elseif($selectedfields[1] == 'status') {//when you use comma seperated values.
 									if($selectedfields[2] == 'Calendar_Status')
@@ -971,20 +1027,20 @@ class ReportRun extends CRMEntity
 							$fieldvalue = "(case when (vtiger_activity.status not like '') then vtiger_activity.status else vtiger_activity.eventstatus end)".$this->getAdvComparator($comparator,trim($value),$datatype);
 						} elseif($comparator == 'y' || ($comparator == 'e' && (trim($value) == "NULL" || trim($value) == ''))) {
 							if($selectedfields[0] == 'vtiger_inventoryproductrel') {
-								$selectedfields[0]='vtiger_inventoryproductrel'.$this->primarymodule;
+								$selectedfields[0]='vtiger_inventoryproductrel'.$moduleName;
 							}
 							$fieldvalue = "(".$selectedfields[0].".".$selectedfields[1]." IS NULL OR ".$selectedfields[0].".".$selectedfields[1]." = '')";
 						} elseif($selectedfields[0] == 'vtiger_inventoryproductrel' ) {
 							if($selectedfields[1] == 'productid'){
-									$fieldvalue = "vtiger_products{$this->primarymodule}.productname ".$this->getAdvComparator($comparator,trim($value),$datatype);
-									$this->queryPlanner->addTable("vtiger_products{$this->primarymodule}");
+									$fieldvalue = "vtiger_products$moduleName.productname ".$this->getAdvComparator($comparator,trim($value),$datatype);
+									$this->queryPlanner->addTable("vtiger_products$moduleName");
 							} else if($selectedfields[1] == 'serviceid'){
-								$fieldvalue = "vtiger_service{$this->primarymodule}.servicename ".$this->getAdvComparator($comparator,trim($value),$datatype);
-								$this->queryPlanner->addTable("vtiger_service{$this->primarymodule}");
+								$fieldvalue = "vtiger_service$moduleName.servicename ".$this->getAdvComparator($comparator,trim($value),$datatype);
+								$this->queryPlanner->addTable("vtiger_service$moduleName");
 							}
 							else{
 							   //for inventory module table should be follwed by the module name
-								$selectedfields[0]='vtiger_inventoryproductrel'.$this->primarymodule;
+								$selectedfields[0]='vtiger_inventoryproductrel'.$moduleName;
 								$fieldvalue = $selectedfields[0].".".$selectedfields[1].$this->getAdvComparator($comparator, $value, $datatype);
 							}
 						} elseif($fieldInfo['uitype'] == '10' || isReferenceUIType($fieldInfo['uitype'])) {
@@ -1620,11 +1676,12 @@ class ReportRun extends CRMEntity
 				if($selectedfields[0] == "vtiger_crmentity".$this->primarymodule)
 					$selectedfields[0] = "vtiger_crmentity";
 				if(stripos($selectedfields[1],'cf_')==0 && stristr($selectedfields[1],'cf_')==true){
-					$sqlvalue = "".$adb->sql_escape_string(decode_html($selectedfields[2]))." ".$sortorder;
+					//In sql queries forward slash(/) is treated as query terminator,so to avoid this problem
+					//the column names are enclosed within ('[]'),which will treat this as part of column name
+					$sqlvalue = "`".$adb->sql_escape_string(decode_html($selectedfields[2]))."` ".$sortorder; 
 				} else {
-					$sqlvalue = "".self::replaceSpecialChar($selectedfields[2])." ".$sortorder;
+					$sqlvalue = "`".self::replaceSpecialChar($selectedfields[2])."` ".$sortorder; 
 				}
-				/************** MONOLITHIC phase 6 customization********************************/
 				if($selectedfields[4]=="D" && strtolower($reportsortrow["dategroupbycriteria"])!="none"){
 					$groupField = $module_field;
 					$groupCriteria = $reportsortrow["dategroupbycriteria"];
@@ -1892,7 +1949,7 @@ class ReportRun extends CRMEntity
 				$query .= " left join vtiger_account as vtiger_accountPotentials on vtiger_potential.related_to = vtiger_accountPotentials.accountid";
 			}
 			if ($this->queryPlanner->requireTable('vtiger_contactdetailsPotentials')) {
-				$query .= " left join vtiger_contactdetails as vtiger_contactdetailsPotentials on vtiger_potential.related_to = vtiger_contactdetailsPotentials.contactid";
+				$query .= " left join vtiger_contactdetails as vtiger_contactdetailsPotentials on vtiger_potential.contact_id = vtiger_contactdetailsPotentials.contactid";
 			}
 			if ($this->queryPlanner->requireTable('vtiger_campaignPotentials')) {
 				$query .= " left join vtiger_campaign as vtiger_campaignPotentials on vtiger_potential.campaignid = vtiger_campaignPotentials.campaignid";
@@ -1971,7 +2028,7 @@ class ReportRun extends CRMEntity
 				$query .= " left join vtiger_account as vtiger_accountRelHelpDesk on vtiger_accountRelHelpDesk.accountid=vtiger_crmentityRelHelpDesk.crmid";
 			}
 			if ($this->queryPlanner->requireTable('vtiger_contactdetailsRelHelpDesk')) {
-				$query .= " left join vtiger_contactdetails as vtiger_contactdetailsRelHelpDesk on vtiger_contactdetailsRelHelpDesk.contactid= vtiger_crmentityRelHelpDesk.crmid";
+				$query .= " left join vtiger_contactdetails as vtiger_contactdetailsRelHelpDesk on vtiger_contactdetailsRelHelpDesk.contactid= vtiger_troubletickets.contact_id";
 			}
 			if ($this->queryPlanner->requireTable('vtiger_productsRel')) {
 				$query .= " left join vtiger_products as vtiger_productsRel on vtiger_productsRel.productid = vtiger_troubletickets.product_id";
@@ -2869,7 +2926,7 @@ class ReportRun extends CRMEntity
 								$custom_field_values, $i);
 
 						if($fld->name == $this->primarymodule.'_LBL_ACTION' && $fieldvalue != '-') {
-							$fieldvalue = "<a href='index.php?module={$this->primarymodule}&view=Detail&record={$fieldvalue}' target='_blank'>".getTranslatedString('LBL_VIEW_DETAILS', $this->primarymodule)."</a>";
+							$fieldvalue = "<a href='index.php?module={$this->primarymodule}&view=Detail&record={$fieldvalue}' target='_blank'>".getTranslatedString('LBL_VIEW_DETAILS')."</a>";
 						}
 
 						$arraylists[$headerLabel] = $fieldvalue;
@@ -3800,7 +3857,6 @@ class ReportRun extends CRMEntity
 		$pdf->setHeaderFont(Array(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN));
 		$pdf->setFooterFont(Array(PDF_FONT_NAME_DATA, '', PDF_FONT_SIZE_DATA));
 		$pdf->setLanguageArray($l);
-		//echo '<pre>';print_r($columnlength);echo '</pre>';
 		$pdf->AddPage();
 
 		$pdf->SetFillColor(224,235,255);

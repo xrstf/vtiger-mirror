@@ -27,7 +27,7 @@
 
     <table class="table table-bordered blockContainer lineItemTable" id="lineItemTab">
         <tr>
-            <th colspan="3"><span class="inventoryLineItemHeader">{vtranslate('LBL_ITEM_DETAILS', $MODULE)}</span></th>
+            <th colspan="2"><span class="inventoryLineItemHeader">{vtranslate('LBL_ITEM_DETAILS', $MODULE)}</span></th>
             <td colspan="1" class="chznDropDown">
                 <b>{$APP.LBL_CURRENCY}</b>&nbsp;&nbsp;
                 {assign var=SELECTED_CURRENCY value=$CURRENCINFO}
@@ -58,7 +58,7 @@
                 <!-- TODO : To get default currency in even better way than depending on first element -->
                 <input type="hidden" id="default_currency_id" value="{$CURRENCIES.0.curid}" />
             </td>
-            <td colspan="2" class="chznDropDown">
+            <td colspan="3" class="chznDropDown">
                 <div class="pull-right">
                     <div class="inventoryLineItemHeader">
                         <span class="alignTop">{vtranslate('LBL_TAX_MODE', $MODULE)}</span>
@@ -307,6 +307,36 @@
                 <span id="grandTotal" name="grandTotal" class="pull-right grandTotal">{$FINAL.grandTotal}</span>
             </td>
         </tr>
+        {if $MODULE eq 'Invoice' or $MODULE eq 'PurchaseOrder'}
+            <tr valign="top">
+                <td width="83%" >
+                    <div class="pull-right">
+                        {if $MODULE eq 'Invoice'}
+                            <b>{vtranslate('LBL_RECEIVED',$MODULE)}</b>
+                        {else}
+                            <b>{vtranslate('LBL_PAID',$MODULE)}</b>
+                        {/if}
+                    </div>
+                </td>
+                <td>
+                    {if $MODULE eq 'Invoice'}
+                            <span class="pull-right"><input id="received" name="received" type="text" class="lineItemInputBox" value="{if $RECORD->getDisplayValue('received') && !($IS_DUPLICATE)}{$RECORD->getDisplayValue('received')}{else}0.00{/if}"></span>
+                    {else}
+                        <span class="pull-right"><input id="paid" name="paid" type="text" class="lineItemInputBox" value="{if $RECORD->getDisplayValue('paid') && !($IS_DUPLICATE)}{$RECORD->getDisplayValue('paid')}{else}0.00{/if}"></span>
+                    {/if}
+                </td>
+            </tr>
+            <tr valign="top">
+                <td width="83%" >
+                    <div class="pull-right">
+                        <b>{vtranslate('LBL_BALANCE',$MODULE)}</b>
+                    </div>
+                </td>
+                <td>
+                    <span class="pull-right"><input id="balance" name="balance" type="text" class="lineItemInputBox" value="{if $RECORD->getDisplayValue('balance') && !($IS_DUPLICATE)}{$RECORD->getDisplayValue('balance')}{else}0.00{/if}" readonly></span>
+                </td>
+            </tr>
+        {/if}
     </table>
     <input type="hidden" name="totalProductCount" id="totalProductCount" value="{$row_no}" />
     <input type="hidden" name="subtotal" id="subtotal" value="" />

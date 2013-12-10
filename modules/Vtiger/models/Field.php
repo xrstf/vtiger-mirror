@@ -17,6 +17,7 @@ class Vtiger_Field_Model extends Vtiger_Field {
 	var $webserviceField = false;
 
     const REFERENCE_TYPE = 'reference';
+	const OWNER_TYPE = 'owner';
 
     const QUICKCREATE_MANDATORY = 0;
     const QUICKCREATE_NOT_ENABLED = 1;
@@ -138,27 +139,33 @@ class Vtiger_Field_Model extends Vtiger_Field {
 	 * @return <String> Data type of the field
 	 */
 	public function getFieldDataType() {
-		if($this->get('uitype') == '69') {
-			return 'image';
-		} else if($this->get('uitype') == '26') {
-			return 'documentsFolder';
-		} else if($this->get('uitype') == '27') {
-			return 'fileLocationType';
-		} else if($this->get('uitype') == '9') {
-			return 'percentage';
-		} else if($this->get('uitype') == '28') {
-			return 'documentsFileUpload';
-		} else if($this->get('uitype') == '83') {
-			return 'productTax';
-		} else if($this->get('uitype') == '117') {
-			return 'currencyList';
-		} else if($this->get('uitype') == '55' && $this->getName() === 'salutationtype') {
-			return 'picklist';
-		} else if($this->get('uitype') == '55' && $this->getName() === 'firstname') {
-			return 'salutation';
+		if(!$this->fieldDataType) {
+			$uiType = $this->get('uitype');
+			if($uiType == '69') {
+				$fieldDataType = 'image';
+			} else if($uiType == '26') {
+				$fieldDataType = 'documentsFolder';
+			} else if($uiType == '27') {
+				$fieldDataType = 'fileLocationType';
+			} else if($uiType == '9') {
+				$fieldDataType = 'percentage';
+			} else if($uiType == '28') {
+				$fieldDataType = 'documentsFileUpload';
+			} else if($uiType == '83') {
+				$fieldDataType = 'productTax';
+			} else if($uiType == '117') {
+				$fieldDataType = 'currencyList';
+			} else if($uiType == '55' && $this->getName() === 'salutationtype') {
+				$fieldDataType = 'picklist';
+			} else if($uiType == '55' && $this->getName() === 'firstname') {
+				$fieldDataType = 'salutation';
+			} else {
+				$webserviceField = $this->getWebserviceFieldObject();
+				$fieldDataType = $webserviceField->getFieldDataType();
+			}
+			$this->fieldDataType = $fieldDataType;
 		}
-		$webserviceField = $this->getWebserviceFieldObject();
-		return $webserviceField->getFieldDataType();
+		return $this->fieldDataType;
 	}
 
 	/**
@@ -302,8 +309,8 @@ class Vtiger_Field_Model extends Vtiger_Field {
     public function isQuickCreateEnabled() {
 		$moduleModel = $this->getModule();
         $quickCreate = $this->get('quickcreate');
-        if($quickCreate == self::QUICKCREATE_MANDATORY || $quickCreate == self::QUICKCREATE_ENABLED
-                || $this->isMandatory()) {
+        if(($quickCreate == self::QUICKCREATE_MANDATORY || $quickCreate == self::QUICKCREATE_ENABLED
+                || $this->isMandatory()) && $this->get('uitype') != 69) {
             //isQuickCreateSupported will not be there for settings
 			if(method_exists($moduleModel,'isQuickCreateSupported') && $moduleModel->isQuickCreateSupported()) {
             return true;
@@ -1083,6 +1090,14 @@ class Vtiger_Field_Model extends Vtiger_Field {
      */
     public function isEmptyPicklistOptionAllowed() {
         return true;
+    }
+
+    public function isReferenceField() {
+        return ($this->getFieldDataType() == self::REFERENCE_TYPE) ? true : false;
+    }
+
+	public function isOwnerField() {
+        return ($this->getFieldDataType() == self::OWNER_TYPE) ? true : false;
     }
 
     public static function getInstanceFromFieldId($fieldId, $moduleTabId) {

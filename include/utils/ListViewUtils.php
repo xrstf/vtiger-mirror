@@ -102,7 +102,7 @@ function getListQuery($module, $where = '') {
 			vtiger_potential.related_to, vtiger_potential.potentialname,
 			vtiger_potential.sales_stage, vtiger_potential.amount,
 			vtiger_potential.currency, vtiger_potential.closingdate,
-			vtiger_potential.typeofrevenue,
+			vtiger_potential.typeofrevenue, vtiger_potential.contact_id,
 			vtiger_potentialscf.*
 			FROM vtiger_potential
 			INNER JOIN vtiger_crmentity
@@ -112,7 +112,7 @@ function getListQuery($module, $where = '') {
 			LEFT JOIN vtiger_account
 				ON vtiger_potential.related_to = vtiger_account.accountid
 			LEFT JOIN vtiger_contactdetails
-				ON vtiger_potential.related_to = vtiger_contactdetails.contactid
+				ON vtiger_potential.contact_id = vtiger_contactdetails.contactid
 			LEFT JOIN vtiger_campaign
 				ON vtiger_campaign.campaignid = vtiger_potential.campaignid
 			LEFT JOIN vtiger_groups
@@ -686,10 +686,10 @@ function textlength_check($field_val) {
 	if ($listview_max_textlength && $listview_max_textlength > 0) {
 		$temp_val = preg_replace("/(<\/?)(\w+)([^>]*>)/i", "", $field_val);
 		if (function_exists('mb_strlen')) {
-			if (mb_strlen($temp_val) > $listview_max_textlength) {
+			if (mb_strlen(html_entity_decode($temp_val)) > $listview_max_textlength) {
 				$temp_val = mb_substr(preg_replace("/(<\/?)(\w+)([^>]*>)/i", "", $field_val), 0, $listview_max_textlength, $default_charset) . '...';
 			}
-		} elseif (strlen($field_val) > $listview_max_textlength) {
+		} elseif (strlen(html_entity_decode($field_val)) > $listview_max_textlength) {
 			$temp_val = substr(preg_replace("/(<\/?)(\w+)([^>]*>)/i", "", $field_val), 0, $listview_max_textlength) . '...';
 		}
 	} else {

@@ -10,6 +10,10 @@
 
 class Settings_Workflows_RecordStructure_Model extends Vtiger_RecordStructure_Model {
 
+	const RECORD_STRUCTURE_MODE_DEFAULT = '';
+	const RECORD_STRUCTURE_MODE_FILTER = 'Filter';
+	const RECORD_STRUCTURE_MODE_EDITTASK = 'EditTask';
+
 	function setWorkFlowModel($workFlowModel) {
 		$this->workFlowModel = $workFlowModel;
 	}
@@ -30,7 +34,8 @@ class Settings_Workflows_RecordStructure_Model extends Vtiger_RecordStructure_Mo
 		$recordId = $recordModel->getId();
 
 		$values = array();
-		$moduleModel = $this->getModule();
+
+		$baseModuleModel = $moduleModel = $this->getModule();
 		$blockModelList = $moduleModel->getBlocks();
 		foreach($blockModelList as $blockLabel=>$blockModel) {
 			$fieldModelList = $blockModel->getFields();
@@ -38,6 +43,13 @@ class Settings_Workflows_RecordStructure_Model extends Vtiger_RecordStructure_Mo
 				$values[$blockLabel] = array();
 				foreach($fieldModelList as $fieldName=>$fieldModel) {
 					if($fieldModel->isViewable()) {
+						if (in_array($moduleModel->getName(), array('Calendar', 'Events'))&& $fieldName != 'modifiedby'  && $fieldModel->getDisplayType() == 3) {
+							/* Restricting the following fields(Event module fields) for "Calendar" module
+							 * time_start, time_end, eventstatus, activitytype,	visibility, duration_hours,
+							 * duration_minutes, reminder_time, recurringtype, notime
+							 */
+							continue;
+						}
 						if(!empty($recordId)) {
 							//Set the fieldModel with the valuetype for the client side.
 							$fieldValueType = $recordModel->getFieldFilterValueType($fieldName);
@@ -46,7 +58,7 @@ class Settings_Workflows_RecordStructure_Model extends Vtiger_RecordStructure_Mo
 							$fieldModel->setFieldInfo($fieldInfo);
 						}
 						// This will be used during editing task like email, sms etc
-						$fieldModel->set('workflow_columnname', $fieldName)->set('workflow_columnlabel', $fieldModel->get('label'));
+						$fieldModel->set('workflow_columnname', $fieldName)->set('workflow_columnlabel', vtranslate($fieldModel->get('label'), $moduleModel->getName()));
 						// This is used to identify the field belongs to source module of workflow
 						$fieldModel->set('workflow_sourcemodule_field', true);
 						$values[$blockLabel][$fieldName] = clone $fieldModel;
@@ -56,7 +68,7 @@ class Settings_Workflows_RecordStructure_Model extends Vtiger_RecordStructure_Mo
 		}
 
 		//All the reference fields should also be sent
-		$fields = $moduleModel->getFieldsByType(array('reference', 'owner'));
+		$fields = $moduleModel->getFieldsByType(array('reference', 'owner', 'multireference'));
 		foreach($fields as $parentFieldName => $field) {
 			$type = $field->getFieldDataType();
 			$referenceModules = $field->getReferenceList();
@@ -70,7 +82,7 @@ class Settings_Workflows_RecordStructure_Model extends Vtiger_RecordStructure_Mo
 						foreach($fieldModelList as $fieldName=>$fieldModel) {
 							if($fieldModel->isViewable()) {
 								$name = "($parentFieldName : ($refModule) $fieldName)";
-								$label = vtranslate($field->get('label', $moduleModel->getName()), $refModule).' : ('.$refModule.') '.vtranslate($fieldModel->get('label'), $refModule);
+								$label = vtranslate($field->get('label'), $baseModuleModel->getName()).' : ('.vtranslate($refModule, $refModule).') '.vtranslate($fieldModel->get('label'), $refModule);
 								$fieldModel->set('workflow_columnname', $name)->set('workflow_columnlabel', $label);
 								if(!empty($recordId)) {
 									$fieldValueType = $recordModel->getFieldFilterValueType($name);
@@ -132,10 +144,42 @@ class Settings_Workflows_RecordStructure_Model extends Vtiger_RecordStructure_Mo
 		return $fieldsBasedOnType;
 	}
 
-	public static function getInstanceForWorkFlowModule($workFlowModel) {
-		$self = new self();
-		$self->setWorkFlowModel($workFlowModel);
-		$self->setModule($workFlowModel->getModule());
-		return $self;
+	public static function getInstanceForWorkFlowModule($workFlowModel, $mode) {
+		$className = Vtiger_Loader::getComponentClassName('Model', $mode.'RecordStructure', 'Settings:Workflows');
+		$instance = new $className();
+		$instance->setWorkFlowModel($workFlowModel);
+		$instance->setModule($workFlowModel->getModule());
+		return $instance;
+	}
+
+	public function getNameFields() {
+		$moduleModel = $this->getModule();
+		$nameFieldsList[$moduleModel->getName()] = $moduleModel->getNameFields();
+
+		$fields = $moduleModel->getFieldsByType(array('reference', 'owner', 'multireference'));
+		foreach($fields as $parentFieldName => $field) {
+			$type = $field->getFieldDataType();
+			$referenceModules = $field->getReferenceList();
+			if($type == 'owner') $referenceModules = array('Users');
+			foreach($referenceModules as $refModule) {
+				$moduleModel = Vtiger_Module_Model::getInstance($refModule);
+				$nameFieldsList[$refModule] = $moduleModel->getNameFields();
+			}
+		}
+
+		$nameFields = array();
+		$recordStructure = $this->getStructure();
+		foreach ($nameFieldsList as $moduleName => $fieldNamesList) {
+			foreach ($fieldNamesList as $fieldName) {
+				foreach($recordStructure as $block => $fields) {
+					foreach($fields as $metaKey => $field) {
+						if ($fieldName === $field->get('name')) {
+							$nameFields[$metaKey] = $field;
+						}
+					}
+				}
+			}
+		}
+		return $nameFields;
 	}
 }

@@ -60,14 +60,16 @@
 		    <div>
 			{foreach item=SUB_PRODUCT_NAME from=$LINE_ITEM_DETAIL["subProductArray$INDEX"]}
 			    <div>
-				- &nbsp; <em>{$SUB_PRODUCT_NAME}</em>
+				{if !empty($SUB_PRODUCT_NAME)}
+					- &nbsp; <em>{$SUB_PRODUCT_NAME}</em>
+				{/if}
 			    </div>
 			{/foreach}
 		    </div>
 		{/if}
 		{if !empty($LINE_ITEM_DETAIL["productName$INDEX"])}
 			<div>
-				{$LINE_ITEM_DETAIL["comment$INDEX"]}
+				{$LINE_ITEM_DETAIL["comment$INDEX"]|nl2br}
 			</div>
 		{/if}
 	    </td>
@@ -176,7 +178,7 @@
 		<tr>
 		    <td width="83%">
 			<span class="pull-right">
-			    {assign var=GROUP_TAX_INFO value="{vtranslate('LBL_TOTAL_AFTER_DISCOUNT',$MODULE_NAME)} = {$LINE_ITEM_DETAIL["totalAfterDiscount$INDEX"]}\r\n{foreach item=tax_details from=$FINAL_DETAILS["taxes"]}{$tax_details["taxlabel"]} : {$tax_details["percentage"]} % = {$tax_details["amount"]}\r\n{/foreach}\r\n{vtranslate('LBL_TOTAL_TAX_AMOUNT',$MODULE_NAME)} = {$FINAL_DETAILS['tax_totalamount']}"}
+			    {assign var=GROUP_TAX_INFO value="{vtranslate('LBL_TOTAL_AFTER_DISCOUNT',$MODULE_NAME)} = {$FINAL_DETAILS["totalAfterDiscount"]}\r\n{foreach item=tax_details from=$FINAL_DETAILS["taxes"]}{$tax_details["taxlabel"]} : {$tax_details["percentage"]} % = {$tax_details["amount"]}\r\n{/foreach}\r\n{vtranslate('LBL_TOTAL_TAX_AMOUNT',$MODULE_NAME)} = {$FINAL_DETAILS['tax_totalamount']}"}
 			    (+)&nbsp;<b><a class="inventoryLineItemDetails" href="javascript:void(0)" id="finalTax"
 					   data-info='{$GROUP_TAX_INFO}'>{vtranslate('LBL_TAX',$MODULE_NAME)}</a></b>
 			</span>

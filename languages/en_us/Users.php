@@ -30,10 +30,6 @@ $languageStrings = array(
 	'Default Lead View' => 'Default Lead View',
 	'Title' => 'Title',
 	'Office Phone' => 'Office Phone',
-	'Other Phone' => 'Secondary Phone',
-	'Email' => 'Primary Email',
-	'Other Email' => 'Other Email',
-	'Secondary Email' => 'Secondary Email',
 	'Department' => 'Department',
 	'Reports To' => 'Reports To',
 	'Yahoo id' => 'Yahoo id',
@@ -63,7 +59,6 @@ $languageStrings = array(
 	'INTERNAL_MAIL_COMPOSER' => 'Internal Mail Composer',
 	'Asterisk Extension'  =>  'Asterisk Extension',
 	' Receive Incoming Calls'  =>  'Receive Incoming Calls',
-	'Reminder Interval' => 'Reminder Interval',
 	'Webservice Access Key' => 'Access Key',
 	'Language' => 'Language',
 	'Theme' =>  'Theme',
@@ -195,6 +190,9 @@ $languageStrings = array(
 	'ForgotPassword' => 'Forgot Password',
 	'LBL_CONNECT_WITH_US' => 'Connect with US',
 	'LBL_GET_MORE' => 'Get more out of Vtiger',
+	
+	'LBL_TRANSFER_RECORDS_TO_USER' => 'Transfer records to user',
+	'LBL_USER_TO_BE_DELETED' => 'User to be Deleted',
 );
 
 $jsLanguageStrings = array(

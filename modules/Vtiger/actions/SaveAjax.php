@@ -21,7 +21,7 @@ class Vtiger_SaveAjax_Action extends Vtiger_Save_Action {
                 $recordFieldValue = implode(' |##| ', $recordFieldValue);
             }
 			$fieldValue = $displayValue = Vtiger_Util_Helper::toSafeHTML($recordFieldValue);
-			if ($fieldModel->getFieldDataType() !== 'currency' && $fieldModel->getFieldDataType() !== 'datetime' && $fieldModel->getFieldDataType() !== 'time' && $fieldModel->getFieldDataType() !== 'date') { 
+			if ($fieldModel->getFieldDataType() !== 'currency' && $fieldModel->getFieldDataType() !== 'datetime' && $fieldModel->getFieldDataType() !== 'date') { 
 				$displayValue = $fieldModel->getDisplayValue($fieldValue, $recordModel->getId()); 
 			}
 			
@@ -66,10 +66,42 @@ class Vtiger_SaveAjax_Action extends Vtiger_Save_Action {
 				if ($fieldName === $request->get('field')) {
 					$fieldValue = $request->get('value');
 				}
+                $fieldDataType = $fieldModel->getFieldDataType();
+                if ($fieldDataType == 'time') {
+					$fieldValue = Vtiger_Time_UIType::getTimeValueWithSeconds($fieldValue);
+				}
+				if ($fieldValue !== null) {
+					if (!is_array($fieldValue)) {
+						$fieldValue = trim($fieldValue);
+					}
+					$recordModel->set($fieldName, $fieldValue);
+				}
 				$recordModel->set($fieldName, $fieldValue);
 			}
 		} else {
-			$recordModel = parent::getRecordModelFromRequest($request);
+			$moduleModel = Vtiger_Module_Model::getInstance($moduleName);
+
+			$recordModel = Vtiger_Record_Model::getCleanInstance($moduleName);
+			$recordModel->set('mode', '');
+
+			$fieldModelList = $moduleModel->getFields();
+			foreach ($fieldModelList as $fieldName => $fieldModel) {
+				if ($request->has($fieldName)) {
+					$fieldValue = $request->get($fieldName, null);
+				} else {
+					$fieldValue = $fieldModel->getDefaultFieldValue();
+				}
+				$fieldDataType = $fieldModel->getFieldDataType();
+				if ($fieldDataType == 'time') {
+					$fieldValue = Vtiger_Time_UIType::getTimeValueWithSeconds($fieldValue);
+				}
+				if ($fieldValue !== null) {
+					if (!is_array($fieldValue)) {
+						$fieldValue = trim($fieldValue);
+					}
+					$recordModel->set($fieldName, $fieldValue);
+				}
+			} 
 		}
 
 		return $recordModel;

@@ -23,11 +23,18 @@ class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View {
 		parent::preProcess($request);
 		$viewer = $this->getViewer($request);
 
+		$recordId = $request->get('record');
+		$viewer->assign('RECORDID', $recordId);
+		if($recordId) {
+			$workflowModel = Settings_Workflows_Record_Model::getInstance($recordId);
+			$viewer->assign('WORKFLOW_MODEL', $workflowModel);
+		}
 		$viewer->assign('RECORD_MODE', $request->getMode());
 		$viewer->view('EditHeader.tpl', $request->getModule(false));
 	}
 
 	public function step1(Vtiger_Request $request) {
+		$currentUser = Users_Record_Model::getCurrentUserModel();
 		$viewer = $this->getViewer($request);
 		$moduleName = $request->getModule();
 		$qualifiedModuleName = $request->getModule(false);
@@ -52,7 +59,9 @@ class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View {
 
 		$viewer->assign('MODULE', $moduleName);
 		$viewer->assign('QUALIFIED_MODULE', $qualifiedModuleName);
-
+		$viewer->assign('CURRENT_USER', $currentUser);
+		$admin = Users::getActiveAdminUser();
+		$viewer->assign('ACTIVE_ADMIN', $admin);
 		$viewer->view('Step1.tpl', $qualifiedModuleName);
 	}
 
@@ -79,7 +88,9 @@ class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View {
 			$workFlowModel->set($name,$value);
 		}
 		//Added to support advance filters
-		$recordStructureInstance = Settings_Workflows_RecordStructure_Model::getInstanceForWorkFlowModule($workFlowModel);
+		$recordStructureInstance = Settings_Workflows_RecordStructure_Model::getInstanceForWorkFlowModule($workFlowModel,
+																			Settings_Workflows_RecordStructure_Model::RECORD_STRUCTURE_MODE_FILTER);
+
 		$viewer->assign('RECORD_STRUCTURE_MODEL', $recordStructureInstance);
 		$viewer->assign('RECORD_STRUCTURE', $recordStructureInstance->getStructure());
 
@@ -88,7 +99,14 @@ class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View {
 		$viewer->assign('MODULE_MODEL', $selectedModule);
 		$viewer->assign('SELECTED_MODULE_NAME', $selectedModuleName);
 
-		$viewer->assign('DATE_FILTERS', Settings_Workflows_Field_Model::getDateFilterTypes());
+		$dateFilters = Vtiger_Field_Model::getDateFilterTypes();
+        foreach($dateFilters as $comparatorKey => $comparatorInfo) {
+            $comparatorInfo['startdate'] = DateTimeField::convertToUserFormat($comparatorInfo['startdate']);
+            $comparatorInfo['enddate'] = DateTimeField::convertToUserFormat($comparatorInfo['enddate']);
+            $comparatorInfo['label'] = vtranslate($comparatorInfo['label'], $qualifiedModuleName);
+            $dateFilters[$comparatorKey] = $comparatorInfo;
+        }
+        $viewer->assign('DATE_FILTERS', $dateFilters);
 		$viewer->assign('ADVANCED_FILTER_OPTIONS', Settings_Workflows_Field_Model::getAdvancedFilterOptions());
 		$viewer->assign('ADVANCED_FILTER_OPTIONS_BY_TYPE', Settings_Workflows_Field_Model::getAdvancedFilterOpsByFieldType());
 		$viewer->assign('COLUMNNAME_API', 'getWorkFlowFilterColumnName');
@@ -102,7 +120,7 @@ class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View {
 		} else {
 			$viewer->assign('ADVANCE_CRITERIA', "");
 		}
-		
+
 		$viewer->assign('IS_FILTER_SAVED_NEW',$workFlowModel->isFilterSavedInNew());
 		$viewer->assign('MODULE', $moduleName);
 		$viewer->assign('QUALIFIED_MODULE', $qualifiedModuleName);
@@ -127,13 +145,6 @@ class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View {
 			$workFlowModel = Settings_Workflows_Record_Model::getCleanInstance($selectedModuleName);
 		}
 
-		$requestData = $request->getAll();
-		foreach($requestData as $name=>$value) {
-			$workFlowModel->set($name,$value);
-		}
-
-		$workFlowModel->save();
-
 		$moduleModel = $workFlowModel->getModule();
 		$viewer->assign('TASK_TYPES', Settings_Workflows_TaskType_Model::getAllForModule($moduleModel));
 		$viewer->assign('SOURCE_MODULE',$selectedModuleName);
@@ -142,7 +153,7 @@ class Settings_Workflows_Edit_View extends Settings_Vtiger_Index_View {
 		$viewer->assign('WORKFLOW_MODEL',$workFlowModel);
 		$viewer->assign('TASK_LIST', $workFlowModel->getTasks());
 		$viewer->assign('QUALIFIED_MODULE',$qualifiedModuleName);
-		
+
 		$viewer->view('Step3.tpl', $qualifiedModuleName);
 	}
 

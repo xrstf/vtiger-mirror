@@ -9,16 +9,17 @@
  *************************************************************************************/
 
 class Events_Save_Action extends Calendar_Save_Action {
-	
+
 	/**
 	 * Function to save record
 	 * @param <Vtiger_Request> $request - values of the record
 	 * @return <RecordModel> - record Model of saved record
 	 */
 	public function saveRecord($request) {
-		 $adb = PearDatabase::getInstance();
+		$adb = PearDatabase::getInstance();
 		$recordModel = $this->getRecordModelFromRequest($request);
 		$recordModel->save();
+		$originalRecordId = $recordModel->getId();
 		if($request->get('relationOperation')) {
 			$parentModuleName = $request->get('sourceModule');
 			$parentModuleModel = Vtiger_Module_Model::getInstance($parentModuleName);
@@ -32,62 +33,50 @@ class Events_Save_Action extends Calendar_Save_Action {
 			$relationModel = Vtiger_Relation_Model::getInstance($parentModuleModel, $relatedModule);
 			$relationModel->addRelation($parentRecordId, $relatedRecordId);
 		}
-		
+
 		// Handled to save follow up event
 		$followupMode = $request->get('followup');
-		
+
 		//Start Date and Time values
 		$startTime = Vtiger_Time_UIType::getTimeValueWithSeconds($request->get('followup_time_start'));
 		$startDateTime = Vtiger_Datetime_UIType::getDBDateTimeValue($request->get('followup_date_start') . " " . $startTime);
 		list($startDate, $startTime) = explode(' ', $startDateTime);
-		
+
 		$subject = $request->get('subject');
 		if($followupMode == 'on' && $startTime != '' && $startDate != ''){
 			$recordModel->set('eventstatus', 'Planned');
 			$recordModel->set('subject','[Followup] '.$subject);
 			$recordModel->set('date_start',$startDate);
-			$recordModel->set('due_date',$startDate);
 			$recordModel->set('time_start',$startTime);
+
+			$currentUser = Users_Record_Model::getCurrentUserModel();
+			$activityType = $recordModel->get('activitytype');
+			if($activityType == 'Call') {
+				$minutes = $currentUser->get('callduration');
+			} else {
+				$minutes = $currentUser->get('othereventduration');
+			}
+			$dueDateTime = date('Y-m-d H:i:s', strtotime("$startDateTime+$minutes minutes"));
+			list($startDate, $startTime) = explode(' ', $dueDateTime);
+
+			$recordModel->set('due_date',$startDate);
 			$recordModel->set('time_end',$startTime);
 			$recordModel->set('recurringtype', '');
 			$recordModel->set('mode', 'create');
 			$recordModel->save();
+			$heldevent = true;
 		}
-		
+
 		//TODO: remove the dependency on $_REQUEST
 		if($_REQUEST['recurringtype'] != '' && $_REQUEST['recurringtype'] != '--None--') {
 			vimport('~~/modules/Calendar/RepeatEvents.php');
 			$focus =  new Activity();
-			
+
 			//get all the stored data to this object
 			$focus->column_fields = $recordModel->getData();
-			
+
 			Calendar_RepeatEvents::repeatFromRequest($focus);
 		}
-		$contactIdList = $request->get('contactidlist');
-        $recordId = $recordModel->getId();
-        if(isset($contactIdList))
-        {
-            //split the string and store in an array
-            $storearray = explode (";",$contactIdList);
-            $del_sql = "delete from vtiger_cntactivityrel where activityid=?";
-            $adb->pquery($del_sql, array($recordId));
-            //print_r($adb->convert2Sql($del_sql, array($recordId)));
-            $record = $recordId;
-            foreach($storearray as $id)
-            {
-                if($id != '')
-                {
-
-                    $sql = "insert into vtiger_cntactivityrel values (?,?)";
-                    $adb->pquery($sql, array($id, $record));
-                    if(!empty($heldevent_id)) {
-                        $sql = "insert into vtiger_cntactivityrel values (?,?)";
-                        $adb->pquery($sql, array($id, $heldevent_id));
-                    }
-                }
-            }
-        }
         return $recordModel;
     }
 

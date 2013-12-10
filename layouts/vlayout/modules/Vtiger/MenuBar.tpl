@@ -12,12 +12,13 @@
 {strip}
 	{assign var="topMenus" value=$MENU_STRUCTURE->getTop()}
 	{assign var="moreMenus" value=$MENU_STRUCTURE->getMore()}
+	{assign var=NUMBER_OF_PARENT_TABS value = count(array_keys($moreMenus))} 
 
 	<div class="navbar" id="topMenus">
 		<div class="navbar-inner" id="nav-inner">
 			<div class="menuBar row-fluid">
 				{* overflow+height is required to avoid flickering UI due to responsive handling, overflow will be dropped later *}
-				<div class="span9" style="overflow: hidden; height: 30px;">
+				<div class="span9" style="overflow: hidden;">
 					<ul class="nav modulesList">
 						<li class="tabs">
 							<a class="alignMiddle {if $MODULE eq 'Home'} selected {/if}" href="{$HOME_MODULE_MODEL->getDefaultUrl()}"><img src="{vimage_path('home.png')}" alt="{vtranslate('LBL_HOME',$moduleName)}" title="{vtranslate('LBL_HOME',$moduleName)}" /></a>
@@ -27,7 +28,7 @@
 							
 							{assign var="topmenuClassName" value="tabs"}
 							{* Make sure to keep selected + few menu persistently and rest responsive *}
-							{if $smarty.foreach.topmenu.index >= $MENU_TOPITEMS_LIMIT && $MENU_SELECTED_MODULENAME != $moduleName}
+							{if $smarty.foreach.topmenu.index > $MENU_TOPITEMS_LIMIT}
 								{assign var="topmenuClassName" value="tabs opttabs"}
 							{/if}
 							
@@ -41,32 +42,42 @@
 								{vtranslate('LBL_ALL',$MODULE)}
 								<b class="caret"></b>
 							</a>
-							<div class="dropdown-menu moreMenus">
+							<div class="dropdown-menu moreMenus" {if ($NUMBER_OF_PARENT_TABS <= 2) && ($NUMBER_OF_PARENT_TABS != 0)}style="width: 30em;"{elseif $NUMBER_OF_PARENT_TABS == 0}style="width: 10em;"{/if}>
 								{foreach key=parent item=moduleList from=$moreMenus name=more}
+									{if $NUMBER_OF_PARENT_TABS >= 4} 
+										{assign var=SPAN_CLASS value=span3} 
+									{elseif $NUMBER_OF_PARENT_TABS == 3} 
+										{assign var=SPAN_CLASS value=span4} 
+									{elseif $NUMBER_OF_PARENT_TABS <= 2} 
+										{assign var=SPAN_CLASS value=span6} 
+									{/if} 
 									{if $smarty.foreach.more.index % 4 == 0}
 										<div class="row-fluid">
 									{/if}
-									{if $moduleList}
-									<span class="span3">
+									<span class="{$SPAN_CLASS}"> 
 										<strong>{vtranslate("LBL_$parent",$moduleName)}</strong><hr>
 										{foreach key=moduleName item=moduleModel from=$moduleList}
 											{assign var='translatedModuleLabel' value=vtranslate($moduleModel->get('label'),$moduleName)}
 											<label class="moduleNames"><a id="menubar_item_{$moduleName}" href="{$moduleModel->getDefaultUrl()}">{$translatedModuleLabel}</a></label>
 										{/foreach}
 									</span>
-									{/if}
 									{if $smarty.foreach.more.last OR ($smarty.foreach.more.index+1) % 4 == 0}
 										</div>
 									{/if}
 									{/foreach}
 								{if $USER_MODEL->isAdminUser()}
-									<a id="menubar_item_moduleManager" href="index.php?module=ModuleManager&parent=Settings&view=List" class="pull-right">{vtranslate('LBL_ADD_MANAGE_MODULES',$MODULE)}</a>
+									<div class="row-fluid">
+										<a id="menubar_item_moduleManager" href="index.php?module=MenuEditor&parent=Settings&view=Index" class="pull-right">{vtranslate('LBL_CUSTOMIZE_MAIN_MENU',$MODULE)}</a>
+									</div>
+									<div class="row-fluid">
+										<a id="menubar_item_moduleManager" href="index.php?module=ModuleManager&parent=Settings&view=List" class="pull-right">{vtranslate('LBL_ADD_MANAGE_MODULES',$MODULE)}</a>
+									</div>
 								{/if}
 							</div>
 						</li>
 					</ul>
 				</div>
-				<div class="span3 row-fluid" id="headerLinks">
+				<div class="span3" id="headerLinks">
 					<span class="pull-right headerLinksContainer">
 						{foreach key=index item=obj from=$HEADER_LINKS}
 							{assign var="src" value=$obj->getIconPath()}
@@ -81,7 +92,7 @@
 											{if empty($title)}
 												{assign var=title value=$USER_MODEL->get('last_name')}
 											{/if}
-										<span class="dropdown-toggle row-fluid" data-toggle="dropdown" href="#">
+										<span class="dropdown-toggle" data-toggle="dropdown" href="#">
 											<a id="menubar_item_right_{$title}"  class="userName textOverflowEllipsis span" title="{$title}">{$title} <i class="caret"></i> </a> </span>
 									{/if}
 									{if !empty($childLinks)}
@@ -89,6 +100,9 @@
 											{foreach key=index item=obj from=$childLinks}
 												{if $obj->getLabel() eq NULL}
 													<li class="divider">&nbsp;</li>
+												{else if $obj->getLabel() eq 'LBL_FEEDBACK'}
+													<li>
+														<a href="https://discussions.vtiger.com" target="_blank">{vtranslate($obj->getLabel(),$MODULE)}</a></li>
 												{else}
 													{assign var="id" value=$obj->getId()}
 													{assign var="href" value=$obj->getUrl()}

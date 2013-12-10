@@ -16,7 +16,7 @@
 		<input type="hidden" name="record" value="{$RECORD_ID}" />
 		<input type="hidden" name="reportname" value="{$REPORT_MODEL->get('reportname')}" />
 		<input type="hidden" name="folderid" value="{$REPORT_MODEL->get('folderid')}" />
-		<input type="hidden" name="description" value="{$REPORT_MODEL->get('description')}" />
+		<input type="hidden" name="reports_description" value="{$REPORT_MODEL->get('description')}" />
 		<input type="hidden" name="primary_module" value="{$PRIMARY_MODULE}" />
 		<input type="hidden" name="secondary_modules" value={ZEND_JSON::encode($SECONDARY_MODULES)} />
 		<input type="hidden" name="selected_fields" id="seleted_fields" value='{$REPORT_MODEL->get('selected_fields')}' />
@@ -25,10 +25,10 @@
 		<input type="hidden" name="advanced_filter" id="advanced_filter" value="" />
 		<input type="hidden" name="isDuplicate" value="{$IS_DUPLICATE}" />
 		<input type="hidden" class="step" value="3" />
-        <input type="hidden" name="date_filters" data-value='{ZEND_JSON::encode($DATE_FILTERS)}' />
+        <input type="hidden" name="date_filters" data-value='{Vtiger_Util_Helper::toSafeHTML(ZEND_JSON::encode($DATE_FILTERS))}' />
 		{assign var=RECORD_STRUCTURE value=array()}
 		{assign var=PRIMARY_MODULE_LABEL value=vtranslate($PRIMARY_MODULE, $PRIMARY_MODULE)}
-		{foreach key=BLOCK_LABEL item=BLOCK_FIELDS from=$PRIMARY_MODULE_RECORD_STRUCTURE->getStructure()}
+		{foreach key=BLOCK_LABEL item=BLOCK_FIELDS from=$PRIMARY_MODULE_RECORD_STRUCTURE}
 			{assign var=PRIMARY_MODULE_BLOCK_LABEL value=vtranslate($BLOCK_LABEL, $PRIMARY_MODULE)}
 			{assign var=key value="$PRIMARY_MODULE_LABEL $PRIMARY_MODULE_BLOCK_LABEL"}
 			{if $LINEITEM_FIELD_IN_CALCULATION eq false && $BLOCK_LABEL eq 'LBL_ITEM_DETAILS'}
@@ -39,7 +39,7 @@
 		{/foreach}
 		{foreach key=MODULE_LABEL item=SECONDARY_MODULE_RECORD_STRUCTURE from=$SECONDARY_MODULE_RECORD_STRUCTURES}
 			{assign var=SECONDARY_MODULE_LABEL value=vtranslate($MODULE_LABEL, $MODULE_LABEL)}
-			{foreach key=BLOCK_LABEL item=BLOCK_FIELDS from=$SECONDARY_MODULE_RECORD_STRUCTURE->getStructure()}
+			{foreach key=BLOCK_LABEL item=BLOCK_FIELDS from=$SECONDARY_MODULE_RECORD_STRUCTURE}
 				{assign var=SECONDARY_MODULE_BLOCK_LABEL value=vtranslate($BLOCK_LABEL, $MODULE_LABEL)}
 				{assign var=key value="$SECONDARY_MODULE_LABEL $SECONDARY_MODULE_BLOCK_LABEL"}
 				{$RECORD_STRUCTURE[$key] = $BLOCK_FIELDS}

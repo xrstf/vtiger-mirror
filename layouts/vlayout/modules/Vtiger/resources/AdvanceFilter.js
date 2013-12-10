@@ -274,7 +274,7 @@ jQuery.Class("Vtiger_AdvanceFilter_Js",{
 		if(typeof fieldInfo != 'undefined') {
 			fieldType = fieldInfo.type;
 		}
-		fieldInfo.comparatorElementVal = conditionSelectElement.val();
+		var comparatorElementVal = fieldInfo.comparatorElementVal = conditionSelectElement.val();
 		if(fieldType == 'date' || fieldType == 'datetime') {
 			fieldInfo.dateSpecificConditions = this.getDateSpecificConditionInfo();
 		}
@@ -287,6 +287,10 @@ jQuery.Class("Vtiger_AdvanceFilter_Js",{
 		// Both filter and find is used since we dont know whether the element is enclosed in some conainer like currency
 		var fieldName = fieldModel.getName();
 		if(fieldModel.getType() == 'multipicklist'){
+			fieldName = fieldName+"[]";
+		}
+		if((fieldModel.getType() == 'picklist' || fieldModel.getType() == 'owner') && fieldSpecificUi.is('select') 
+            && ( comparatorElementVal == 'e' || comparatorElementVal == 'n')) {
 			fieldName = fieldName+"[]";
 		}
 		
@@ -367,7 +371,7 @@ jQuery.Class("Vtiger_AdvanceFilter_Js",{
 		jQuery.each(fieldSelectElement,function(i,elem){
 			var currentElement = jQuery(elem);
 			if(currentElement.val() != 'none'){
-				currentElement.trigger('change');
+				currentElement.trigger('change', {'_intialize': true});
 			}
 		});
 		return this;
@@ -459,8 +463,20 @@ jQuery.Class("Vtiger_AdvanceFilter_Js",{
 					for(var key in fieldList) {
 						var field = fieldList[key];
 						if(field == 'value' && valueSelectElement.is('select')){
-							rowValues[field] = valueSelectElement.find('option:selected').text();
-						} else {
+							var selectedOptions = valueSelectElement.find('option:selected');
+							var newvaluesArr = [];
+							jQuery.each(selectedOptions,function(i,e) {
+								newvaluesArr.push(jQuery.trim(jQuery(e).text()));
+							});
+							if(selectedOptions.length == 0){
+								rowValues[field] = '';
+							} else {
+								rowValues[field] = newvaluesArr.join(',');
+							}
+							 
+						} else if(field == 'value' && valueSelectElement.is('input')) {
+							rowValues[field] = valueSelectElement.val();
+						} else {	
 							rowValues[field] = jQuery('[name="'+field+'"]', rowElement).val();
 						}
 					}
@@ -482,7 +498,12 @@ jQuery.Class("Vtiger_AdvanceFilter_Js",{
 							var reconstructedCommaSeperatedValues = newvaluesArr.join(',');
 							rowValues[field] = reconstructedCommaSeperatedValues;
 						} else if(field == 'value' && valueSelectElement.is('select') && fieldType == 'picklist'){
-							rowValues[field] = valueSelectElement.val();
+							var value = valueSelectElement.val();
+							if(value == null){
+								rowValues[field] = value;
+							} else {
+								rowValues[field] = value.join(',');
+							}
 						} else if(field == 'value' && valueSelectElement.is('select') && fieldType == 'multipicklist'){
 							var value = valueSelectElement.val();
 							if(value == null){
@@ -545,9 +566,15 @@ jQuery.Class("Vtiger_AdvanceFilter_Js",{
 	registerFieldChange : function() {
 		var filterContainer = this.getFilterContainer();
 		var thisInstance = this;
-		filterContainer.on('change','select[name="columnname"]',function(e){
-			thisInstance.loadConditions(jQuery(e.currentTarget));
-			thisInstance.loadFieldSpecificUi(jQuery(e.currentTarget));
+		filterContainer.on('change','select[name="columnname"]',function(e,data){
+            var currentElement = jQuery(e.currentTarget);
+            if(typeof data == 'undefined' || data._intialize != true){
+                var row = currentElement.closest('div.conditionRow');
+                var conditionSelectElement = row.find('select[name="comparator"]');
+                conditionSelectElement.empty();
+            }
+			thisInstance.loadConditions(currentElement);
+			thisInstance.loadFieldSpecificUi(currentElement);
 		});
 	},
 
@@ -612,7 +639,23 @@ Vtiger_Picklist_Field_Js('AdvanceFilter_Picklist_Field_Js',{},{
 
 	getUi : function(){
 		var comparatorSelectedOptionVal = this.get('comparatorElementVal');
-		if(comparatorSelectedOptionVal != 'e' && comparatorSelectedOptionVal !='n'){
+		if(comparatorSelectedOptionVal == 'e' || comparatorSelectedOptionVal =='n'){
+			var html = '<select class="select2 row-fluid" multiple name="'+ this.getName() +'[]">';
+			var pickListValues = this.getPickListValues();
+			var selectedOption = app.htmlDecode(this.getValue());
+			var selectedOptionsArray = selectedOption.split(',')
+			for(var option in pickListValues) {
+				html += '<option value="'+option+'" ';
+				if(jQuery.inArray(option,selectedOptionsArray) != -1){
+					html += ' selected ';
+				}
+				html += '>'+pickListValues[option]+'</option>';
+			}
+			html +='</select>';
+			var selectContainer = jQuery(html);
+			this.addValidationToElement(selectContainer);
+			return selectContainer;
+		} else {
 			var selectedOption = app.htmlDecode(this.getValue());
 			var pickListValues = this.getPickListValues();
 			var tagsArray = new Array();
@@ -629,8 +672,6 @@ Vtiger_Picklist_Field_Js('AdvanceFilter_Picklist_Field_Js',{},{
 			selectContainer.data('tags', tagsArray).data('picklistvalues', pickListValuesArrayFlip);
 			this.addValidationToElement(selectContainer);
 			return selectContainer;
-		} else {
-			return this._super();
 		}
 	}
 });
@@ -656,7 +697,7 @@ Vtiger_Multipicklist_Field_Js('AdvanceFilter_Multipicklist_Field_Js',{},{
 			selectContainer.data('tags', tagsArray).data('picklistvalues', pickListValuesArrayFlip);
 			this.addValidationToElement(selectContainer);
 			return selectContainer;
-		} else {
+		} else {	
 			return this._super();
 		}
 	}
@@ -666,13 +707,36 @@ Vtiger_Owner_Field_Js('AdvanceFilter_Owner_Field_Js',{},{
 
 	getUi : function(){
 		var comparatorSelectedOptionVal = this.get('comparatorElementVal');
-		if(comparatorSelectedOptionVal != 'e' && comparatorSelectedOptionVal !='n' ){
+		if(comparatorSelectedOptionVal == 'e' || comparatorSelectedOptionVal =='n'){
+			var html = '<select class="select2 row-fluid" multiple name="'+ this.getName() +'[]">';
+			var pickListValues = this.getPickListValues();
+			var selectedOption = app.htmlDecode(this.getValue());
+			var selectedOptionsArray = selectedOption.split(',')
+			for(var optGroup in pickListValues){
+				html += '<optgroup label="'+optGroup+'">'
+				var optionGroupValues = pickListValues[optGroup];
+				for(var option in optionGroupValues) {
+					html += '<option value="'+option+'" ';
+					//comparing with the value instead of key , because saved value is giving username instead of id.
+					if(jQuery.inArray(jQuery.trim(optionGroupValues[option]),selectedOptionsArray) != -1){
+						html += ' selected ';
+					}
+					html += '>'+optionGroupValues[option]+'</option>';
+				}
+				html += '</optgroup>'
+			}
+
+			html +='</select>';
+			var selectContainer = jQuery(html);
+			this.addValidationToElement(selectContainer);
+			return selectContainer;
+		} else {
 			var selectedOption = this.getValue();
 			var pickListValues = this.getPickListValues();
 			var tagsArray = new Array();
 			jQuery.each( pickListValues, function(groups, blocks) {
 				jQuery.each(blocks,function(i,e){
-					tagsArray.push(e);
+					tagsArray.push( jQuery.trim(e));
 				})
 			});
 			var html = '<input data-tags="'+tagsArray +'" type="hidden" class="row-fluid select2" name="'+ this.getName() +'">';
@@ -680,8 +744,6 @@ Vtiger_Owner_Field_Js('AdvanceFilter_Owner_Field_Js',{},{
 			selectContainer.data('tags', tagsArray);
 			this.addValidationToElement(selectContainer);
 			return selectContainer;
-		} else {
-			return this._super();
 		}
 	}
 });
@@ -697,6 +759,25 @@ Vtiger_Date_Field_Js('AdvanceFilter_Date_Field_Js',{},{
 		if(comparatorSelectedOptionVal == 'bw' || comparatorSelectedOptionVal == 'custom'){
 			var html = '<div class="date"><input class="dateField" data-calendar-type="range" name="'+ this.getName() +'" data-date-format="'+ this.getDateFormat() +'" type="text" ReadOnly="true" value="'+  this.getValue() + '"></div>';
 			var element = jQuery(html);
+			var dateFieldUi = element.find('.dateField');
+			if(dateFieldUi.val().indexOf(',') !== -1) {
+				var valueArray = this.getValue().split(',');
+				var startDateTime = valueArray[0];
+				var endDateTime = valueArray[1];
+				if(startDateTime.indexOf(' ') !== -1) {
+					var dateTime = startDateTime.split(' ');
+					if(dateTime[1] == '00:00:00') {
+						startDateTime = dateTime[0];
+					}
+				}
+				if(endDateTime.indexOf(' ') !== -1) {
+					var dateTimeValue = endDateTime.split(' ');
+					if(dateTimeValue[1] == '00:00:00') {
+						endDateTime = dateTimeValue[0];
+					}
+				}
+				dateFieldUi.val(startDateTime+','+endDateTime);
+			}
 			return this.addValidationToElement(element);
 		}
         else if (comparatorSelectedOptionVal in dateSpecificConditions) {
@@ -706,7 +787,19 @@ Vtiger_Date_Field_Js('AdvanceFilter_Date_Field_Js',{},{
             return jQuery(html);
         }
         else {
-			return this._super();
+			var fieldUi = this._super();
+			var dateTimeFieldValue = fieldUi.find('.dateField').val();
+			var dateValue = dateTimeFieldValue.split(' ');
+			if(dateValue[1] == '00:00:00') {
+				dateTimeFieldValue = dateValue[0];
+			}
+			else if(comparatorSelectedOptionVal == 'e' || comparatorSelectedOptionVal == 'n' || 
+					comparatorSelectedOptionVal == 'b' || comparatorSelectedOptionVal == 'a') {
+				var dateTimeArray = dateTimeFieldValue.split(' ');
+				dateTimeFieldValue = dateTimeArray[0];
+			}
+			fieldUi.find('.dateField').val(dateTimeFieldValue);
+			return fieldUi;
 		}
 	}
 });

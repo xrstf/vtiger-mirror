@@ -54,6 +54,11 @@ class Leads_SaveConvertLead_View extends Vtiger_View_Controller {
 						$fieldValue = Vtiger_Currency_UIType::convertToDBFormat($fieldValue);
 					} elseif ($fieldModel->getFieldDataType() === 'date') {
 						$fieldValue = DateTimeField::convertToDBFormat($fieldValue);
+					} elseif ($fieldModel->getFieldDataType() === 'reference' && $fieldValue) {
+						$ids = vtws_getIdComponents($fieldValue);
+						if (count($ids) === 1) {
+							$fieldValue = vtws_getWebserviceEntityId(getSalesEntityType($fieldValue), $fieldValue);
+						}
 					}
 					$entityValues['entities'][$module][$fieldName] = $fieldValue;
 				}
@@ -62,7 +67,7 @@ class Leads_SaveConvertLead_View extends Vtiger_View_Controller {
 		try {
 			$result = vtws_convertlead($entityValues, $currentUser);
 		} catch(Exception $e) {
-			$this->showError($request);
+			$this->showError($request, $e);
 			exit;
 		}
 
@@ -85,8 +90,12 @@ class Leads_SaveConvertLead_View extends Vtiger_View_Controller {
 		}
 	}
 
-	function showError($request) {
+	function showError($request, $exception=false) {
 		$viewer = $this->getViewer($request);
+		if($exception != false) {
+			$viewer->assign('EXCEPTION', $exception->getMessage());
+		}
+
 		$moduleName = $request->getModule();
 		$currentUser = Users_Record_Model::getCurrentUserModel();
 

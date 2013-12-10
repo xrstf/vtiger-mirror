@@ -52,7 +52,7 @@ $languageStrings = array(
 	'LBL_AVAILABLE_WORKLIST_LIST' => 'Available Workflows',
 	'LBL_FIELDFORMULAS' => 'Field Formulas',
 	'LBL_FIELDFORMULAS_DESCRIPTION' => 'Add custom equations to custom fields',
-
+    
 	'VTLIB_LBL_MODULE_MANAGER' => 'Module Manager',
 	'VTLIB_LBL_MODULE_MANAGER_DESCRIPTION' => 'Manage module behavior inside vtiger CRM',
 	'LBL_PICKLIST_EDITOR' => 'Picklist Editor',
@@ -78,7 +78,7 @@ $languageStrings = array(
 	'LBL_TAX_SETTINGS' => 'Tax Calculations',
 	'LBL_TAX_DESCRIPTION' => 'Manage taxes and the corresponding tax rates',
 
-	'LBL_MAIL_SERVER_SETTINGS' => 'Outgoing server',
+	'LBL_MAIL_SERVER_SETTINGS' => 'Outgoing Server',
 	'LBL_MAIL_SERVER_DESCRIPTION' => 'Configure Outgoing Mail Server details',
 
 	'INVENTORYTERMSANDCONDITIONS' => 'Inventory: Terms and Conditions',
@@ -97,6 +97,7 @@ $languageStrings = array(
 
 	'LBL_LIST_WORKFLOWS' => 'Workflows',
 	'LBL_LIST_WORKFLOWS_DESCRIPTION' => 'Create and edit workflows',
+    'LBL_SELECT_DATE' => 'Select dates',
 
 	'Configuration Editor' => 'Configuration Editor',
 	'Update configuration file of the application' => 'Update configuration file of the application',
@@ -244,9 +245,17 @@ $languageStrings = array(
 	
 	//User Login History
 	'LoginHistory' => 'User Login History',
-	'LBL_SELECT_USER' => 'Select User',
 	'LBL_LOGIN_HISTORY_DETAILS' => 'Login History',
 	'LBL_LOGIN_HISTORY_DESCRIPTION' => 'Login History Details',
+	'LBL_USER_NAME'=> 'User Name',
+	'LBL_USER_IP_ADDRESS'=> 'User IP Address', 
+	'LBL_LOGIN_TIME' => 'Sign-in Time',
+	'LBL_LOGGED_OUT_TIME' => 'Sign-out Time', 
+	'LBL_STATUS' => 'Status',
+	'LBL_LOGIN_HISTORY_DETAILS' => 'Login History',
+	'LBL_LOGIN_HISTORY_DESCRIPTION' => 'Login History Details',
+	
+	'LBL_CONFIG_EDITOR_DESCRIPTION' => 'Update configuration file of the application',
 );
 
 $jsLanguageStrings = array(
@@ -261,6 +270,7 @@ $jsLanguageStrings = array(
 	'JS_PLEASE_ENTER_NUMBER_IN_RANGE_1TO5' => 'Please enter value in the range 1-5',
 	'JS_PLEASE_ENTER_NUMBER_IN_RANGE_1TO100' => 'Please enter value in the range 1-100',
 	'JS_RECORD_NUMBERING_SAVED_SUCCESSFULLY_FOR' => 'Record Numbering Successfully saved for',
+	'LBL_PREFIX_IN_USE' => 'Prefix in use',
 	'JS_RECORD_NUMBERING_UPDATED_SUCCESSFULLY_FOR' => 'Record Numbering Updated Successfully for',
 	'JS_SEQUENCE_NUMBER_MESSAGE' => 'Sequence Number should be greater than or equal to',
 	'LBL_WRONG_IMAGE_TYPE' => 'not supported Image type',

@@ -221,7 +221,7 @@ Settings_Workflows_Edit_Js("Settings_Workflows_Edit3_Js",{},{
 				for(var key in fieldList) {
 					var field = fieldList[key];
 					if(field == 'value' && valueSelectElement.is('select')){
-						rowValues[field] = valueSelectElement.find('option:selected').text();
+						rowValues[field] = valueSelectElement.find('option:selected').val();
 					} else {
 						rowValues[field] = jQuery('[name="'+field+'"]', rowElement).val();
 					}
@@ -364,6 +364,14 @@ Settings_Workflows_Edit_Js("Settings_Workflows_Edit3_Js",{},{
 				});
 		});
 	},
+
+	registerFillTaskFromEmailFieldEvent: function() {
+		jQuery('#saveTask').on('change','#fromEmailOption',function(e) {
+			var currentElement = jQuery(e.currentTarget);
+			var inputElement = currentElement.closest('.row-fluid').find('.fields');
+			inputElement.val(currentElement.val());
+		})
+	},
 	
 	registerFillTaskFieldsEvent: function() {
 		jQuery('#saveTask').on('change','.task-fields',function(e) {
@@ -389,6 +397,7 @@ Settings_Workflows_Edit_Js("Settings_Workflows_Edit3_Js",{},{
 		var ckEditorInstance = this.getckEditorInstance();
 		ckEditorInstance.loadCkEditor(textAreaElement);
 		this.registerFillMailContentEvent();
+		this.registerFillTaskFromEmailFieldEvent();
 		this.registerCcAndBccEvents();
 	},
 	

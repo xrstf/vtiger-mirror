@@ -166,7 +166,7 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 	 * @param <Boolean> $skipRecords - List of the RecordIds to be skipped
 	 * @return <Array> List of RecordsIds
 	 */
-	public function getRecordIds($skipRecords=false) {
+	public function getRecordIds($skipRecords=false, $module) {
 		$db = PearDatabase::getInstance();
 		$cvId = $this->getId();
 		$moduleModel = $this->getModule();
@@ -185,6 +185,9 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 		}
 
 		$listQuery = $queryGenerator->getQuery();
+		if($module == 'RecycleBin'){
+			$listQuery = preg_replace("/vtiger_crmentity.deleted\s*=\s*0/i", 'vtiger_crmentity.deleted = 1', $listQuery);
+		}
 
 		if($skipRecords && !empty($skipRecords) && is_array($skipRecords) && count($skipRecords) > 0) {
 			$listQuery .= ' AND '.$baseTableName.'.'.$baseTableId.' NOT IN ('. implode(',', $skipRecords) .')';
@@ -503,6 +506,12 @@ class CustomView_Record_Model extends Vtiger_Base_Model {
 							$date = new DateTimeField(trim($temp_val[$x]));
 							$val[$x] = $date->getDisplayDate();
 						} elseif ($col[4] == 'DT') {
+							$comparator = array('e','n','b','a');
+							if(in_array($criteria['comparator'], $comparator)) {
+								$originalValue = $temp_val[$x];
+								$dateTime = explode(' ',$originalValue);
+								$temp_val[$x] = $dateTime[0];
+							}
 							$date = new DateTimeField(trim($temp_val[$x]));
 							$val[$x] = $date->getDisplayDateTimeValue();
 						} else {

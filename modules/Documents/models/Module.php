@@ -19,6 +19,14 @@ class Documents_Module_Model extends Vtiger_Module_Model {
 	}
 
 	/**
+	 * Function to check whether the module is summary view supported
+	 * @return <Boolean> - true/false
+	 */
+	public function isSummaryViewSupported() {
+		return false;
+	}
+	
+	/**
 	 * Function returns the url which gives Documents that have Internal file upload
 	 * @return string
 	 */
@@ -54,7 +62,7 @@ class Documents_Module_Model extends Vtiger_Module_Model {
 		if($sourceModule === 'Emails' && $field === 'composeEmail') {
 			$condition = ' (( vtiger_notes.filelocationtype LIKE "%I%")) AND vtiger_notes.filename != "" AND vtiger_notes.filestatus = 1';
 		} else {
-			$condition = " vtiger_notes.notesid NOT IN (SELECT notesid FROM vtiger_senotesrel WHERE crmid = '$record')";
+			$condition = " vtiger_notes.notesid NOT IN (SELECT notesid FROM vtiger_senotesrel WHERE crmid = '$record') AND vtiger_notes.filestatus = 1";
 		}
 		$pos = stripos($listQuery, 'where');
 		if($pos) {

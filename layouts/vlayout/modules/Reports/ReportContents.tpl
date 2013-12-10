@@ -11,15 +11,15 @@
 -->*}
 {strip}
 	<div class="contents-topscroll">
-		<div class="topscroll-div">
+		<div class="topscroll-div container-fluid">
 			&nbsp;
 		 </div>
 	</div>
-	<div id="reportDetails" class="marginLeft5px contents-bottomscroll">
+	<div id="reportDetails" class="container-fluid contents-bottomscroll">
 		<div class="bottomscroll-div">
 		<input type="hidden" id="updatedCount" value="{$NEW_COUNT}" />
 		{if !empty($CALCULATION_FIELDS)}
-			<table class="table table-bordered table-condensed" width="100%">
+			<table class=" table-bordered table-condensed marginBottom10px" width="100%">
 				<thead>
 					<tr class="blockHeader">
 						<th>{vtranslate('LBL_FIELD_NAMES',$MODULE)}</th>
@@ -35,8 +35,10 @@
 						{assign var=CALCULATION_FIELD_KEYS value=array_keys($CALCULATION_FIELD)}
 						{assign var=CALCULATION_FIELD_KEYS value=$CALCULATION_FIELD_KEYS|replace:$ESCAPE_CHAR:''}
 						{assign var=FIELD_IMPLODE value=explode('_',$CALCULATION_FIELD_KEYS['0'])}
-						{assign var=FIELD_LABEL value=$FIELD_IMPLODE['1']|cat:' '|cat:$FIELD_IMPLODE['2']}
-						<td>{vtranslate($FIELD_IMPLODE['0'],$MODULE)} {vtranslate($FIELD_LABEL, $MODULE)}</td>
+						{assign var=MODULE_NAME value=$FIELD_IMPLODE['0']}
+						{assign var=FIELD_LABEL value=" "|implode:$FIELD_IMPLODE}
+						{assign var=FIELD_LABEL value=$FIELD_LABEL|replace:$MODULE_NAME:''}
+						<td>{vtranslate($MODULE_NAME,$MODULE)} {vtranslate($FIELD_LABEL, $MODULE)}</td>
 						{foreach from=$CALCULATION_FIELD item=CALCULATION_VALUE}
 							<td width="15%">{$CALCULATION_VALUE}</td>
 						{/foreach}
@@ -45,7 +47,7 @@
 			</table>
 			{if $PRIMARY_MODULE eq 'Invoice' || $PRIMARY_MODULE eq 'Quotes' || $PRIMARY_MODULE eq 'SalesOrder' || $PRIMARY_MODULE eq 'PurchaseOrder'}
 				{assign var=BASE_CURRENCY_INFO value=Vtiger_Util_Helper::getBaseCurrency()}
-				<div style="position:relative;top:-18px;" class="pull-right alert-info">{vtranslate('LBL_NOTE', 'Vtiger')} : {vtranslate('LBL_CALCULATION_CONVERSION_MESSAGE', 'Reports')} - {$BASE_CURRENCY_INFO['currency_name']} ({$BASE_CURRENCY_INFO['currency_code']})</div>
+				<div class="alert alert-info">{vtranslate('LBL_NOTE', 'Vtiger')} : {vtranslate('LBL_CALCULATION_CONVERSION_MESSAGE', 'Reports')} - {$BASE_CURRENCY_INFO['currency_name']} ({$BASE_CURRENCY_INFO['currency_code']})</div>
 			{/if}
 		{/if}
 
@@ -62,7 +64,7 @@
 				{foreach from=$DATA item=VALUES}
 					<tr>
 						{foreach from=$VALUES item=VALUE key=NAME}
-							<td nowrap>{$VALUE}</td>
+							<td>{$VALUE}</td>
 						{/foreach}
 					</tr>
 				{/foreach}
@@ -75,4 +77,5 @@
 		{/if}
 		</div>
 	</div>
+</div>
 {/strip}

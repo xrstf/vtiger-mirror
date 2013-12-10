@@ -86,11 +86,12 @@ class Potentials_Module_Model extends Vtiger_Module_Model {
 		$db = PearDatabase::getInstance();
 		//TODO need to handle security
 		$params = array();
-		$result = $db->pquery('SELECT COUNT(*) AS count, last_name, sales_stage FROM vtiger_potential
+		$result = $db->pquery('SELECT COUNT(*) AS count, last_name, vtiger_potential.sales_stage FROM vtiger_potential
 						INNER JOIN vtiger_crmentity ON vtiger_potential.potentialid = vtiger_crmentity.crmid
 						INNER JOIN vtiger_users ON vtiger_users.id=vtiger_crmentity.smownerid AND vtiger_users.status="ACTIVE"
 						AND vtiger_crmentity.deleted = 0'.Users_Privileges_Model::getNonAdminAccessControlQuery($this->getName()).'
-							GROUP BY smownerid, sales_stage', $params);
+						INNER JOIN vtiger_sales_stage ON vtiger_potential.sales_stage =  vtiger_sales_stage.sales_stage 
+						GROUP BY smownerid, sales_stage ORDER BY vtiger_sales_stage.sortorderid', $params);
 
 		$response = array();
 		for($i=0; $i<$db->num_rows($result); $i++) {
@@ -111,11 +112,13 @@ class Potentials_Module_Model extends Vtiger_Module_Model {
 		$db = PearDatabase::getInstance();
 		//TODO need to handle security
 		$params = array();
-		$result = $db->pquery('SELECT sum(amount) AS amount, last_name, sales_stage FROM vtiger_potential
+		$result = $db->pquery('SELECT sum(amount) AS amount, last_name, vtiger_potential.sales_stage FROM vtiger_potential
 						INNER JOIN vtiger_crmentity ON vtiger_potential.potentialid = vtiger_crmentity.crmid
 						INNER JOIN vtiger_users ON vtiger_users.id=vtiger_crmentity.smownerid AND vtiger_users.status="ACTIVE"
-						AND vtiger_crmentity.deleted = 0 '.Users_Privileges_Model::getNonAdminAccessControlQuery($this->getName()).'WHERE sales_stage NOT IN ("Closed Won", "Closed Lost")
-						GROUP BY smownerid, sales_stage', $params);
+						AND vtiger_crmentity.deleted = 0 '.Users_Privileges_Model::getNonAdminAccessControlQuery($this->getName()).
+						'INNER JOIN vtiger_sales_stage ON vtiger_potential.sales_stage =  vtiger_sales_stage.sales_stage 
+						WHERE vtiger_potential.sales_stage NOT IN ("Closed Won", "Closed Lost")
+						GROUP BY smownerid, sales_stage ORDER BY vtiger_sales_stage.sortorderid', $params);
 		for($i=0; $i<$db->num_rows($result); $i++) {
 			$row = $db->query_result_rowdata($result, $i);
 			$data[] = $row;
@@ -227,8 +230,9 @@ class Potentials_Module_Model extends Vtiger_Module_Model {
 			$userNameSql = getSqlForNameInDisplayFormat(array('first_name' => 'vtiger_users.first_name', 'last_name' => 'vtiger_users.last_name'), 'Users');
 
 			$query = "SELECT CASE WHEN (vtiger_users.user_name not like '') THEN $userNameSql ELSE vtiger_groups.groupname END AS user_name,
-						vtiger_crmentity.*, vtiger_activity.*, vtiger_seactivityrel.crmid AS parent_id,
-						CASE WHEN (vtiger_activity.activitytype = 'Task') THEN vtiger_activity.status ELSE vtiger_activity.eventstatus END AS status
+						vtiger_crmentity.*, vtiger_activity.activitytype, vtiger_activity.subject, vtiger_activity.date_start, vtiger_activity.time_start,
+						vtiger_activity.recurringtype, vtiger_activity.due_date, vtiger_activity.time_end, vtiger_seactivityrel.crmid AS parent_id,
+						CASE WHEN (vtiger_activity.activitytype = 'Task') THEN (vtiger_activity.status) ELSE (vtiger_activity.eventstatus) END AS status
 						FROM vtiger_activity
 						INNER JOIN vtiger_crmentity ON vtiger_crmentity.crmid = vtiger_activity.activityid
 						LEFT JOIN vtiger_seactivityrel ON vtiger_seactivityrel.activityid = vtiger_activity.activityid

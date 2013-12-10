@@ -18,6 +18,14 @@ class SMSNotifier_Module_Model extends Vtiger_Module_Model {
 		//SMSNotifier module is not enabled for quick create
 		return false;
 	}
+	
+	/**
+	 * Function to check whether the module is summary view supported
+	 * @return <Boolean> - true/false
+	 */
+	public function isSummaryViewSupported() {
+		return false;
+	}
 
 	/**
 	 * Function to get the module is permitted to specific action
