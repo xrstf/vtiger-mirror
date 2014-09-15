@@ -72,7 +72,6 @@ if(isset($_REQUEST['PHPSESSID']))
 if(isset($_REQUEST['view'])) {
     //setcookie("view",$_REQUEST['view']);
     $view = $_REQUEST["view"];
-    session_register("view");
 }
 	
 
@@ -95,6 +94,7 @@ insert_charset_header();
 // Create or reestablish the current session
 session_start();
 
+
 if (!is_file('config.inc.php')) {
 	header("Location: install.php");
 	exit();
@@ -111,6 +111,9 @@ if (is_file('config_override.php'))
 {
 	require_once('config_override.php');
 }
+
+// Good place to include protection here as session would have been started by now.
+include_once 'include/csrf-protect.php';
 
 /**
  * Check for vtiger installed version and codebase
@@ -215,7 +218,7 @@ $is_module = false;
 $is_action = false;
 if(isset($_REQUEST['module']))
 {
-	$module = vtlib_purify($_REQUEST['module']);
+	$module = $_REQUEST['module'];	
 	$dir = @scandir($root_directory."modules");
 	$temp_arr = Array("CVS","Attic");
 	$res_arr = @array_intersect($dir,$temp_arr);
@@ -597,8 +600,7 @@ if($action == "DetailView")
 }	
 
 // set user, theme and language cookies so that login screen defaults to last values
-$siteURLParts = parse_url($site_URL); 
-$cookieDomain = $siteURLParts['host'];
+$siteURLParts = parse_url($site_URL); $cookieDomain = $siteURLParts['host'];
 if (isset($_SESSION['authenticated_user_id'])) {
         $log->debug("setting cookie ck_login_id_vtiger to ".$_SESSION['authenticated_user_id']);
         setcookie('ck_login_id_vtiger', $_SESSION['authenticated_user_id'],0,null,$cookieDomain,false,true);
@@ -745,6 +747,7 @@ else if(!vtlib_isModuleActive($currentModule)) {
 // END
 else
 {
+	requestValidate($module, $action);
 	include($currentModuleFile);
 }
 

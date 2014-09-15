@@ -35,29 +35,11 @@ $user_password = $_REQUEST['user_password'];
 
 $focus->load_user($user_password);
 
-$successURL = 'vtigerui.php';
-
-if (file_exists(dirname(__FILE__) . '/../../vtigerui-deferred.php')) {
-	/* Ondemand Customization:
- 	 * Authenticate done via iFrame and Parent invokes index.php explicitly
-	 * so lets instruct redirection page to wait for few seconds and then act.
-	 */
-	$successURL = 'vtigerui-deferred.php';
-}
+$successURL = 'index.php';
 
 if($focus->is_authenticated()) {
 	session_regenerate_id();
-	// Ondemand Customization
-	if (file_exists('modules/Ondemand/VAS.php')) {
-		include_once 'modules/Ondemand/VAS.php';
-		$response = VAS_Client::auditLogin(array('user_name' => vtlib_purify($_REQUEST['user_name'])), 'WebUI5');
-		Vtiger_Utils::ModuleLog('Ondemand', 'User Aduit Login', $response);
-	}
-	// END
 	
-	//Inserting entries for audit trail during login
-	// Ondemand : disable audit trial
-	$audit_trail = 'false';
 	if($audit_trail == 'true') {
 		if($record == '')
 			$auditrecord = '';
@@ -83,10 +65,6 @@ if($focus->is_authenticated()) {
 	createUserPrivilegesfile($focus->id);
 
 	//Security related entries end
-	session_unregister('login_password');
-	session_unregister('login_error');
-	session_unregister('login_user_name');
-
 	$_SESSION['authenticated_user_id'] = $focus->id;
 	$_SESSION['AUTHUSERID'] = $focus->id;
 	$_SESSION['app_unique_key'] = $application_unique_key;
@@ -139,28 +117,12 @@ if($focus->is_authenticated()) {
 		unlink($tmp_file_name);
 	}
 	
-	$userSetupStatus = Users_CRMSetup::getUserSetupStatus($focus->id);
-	if ($userSetupStatus) {
-		$user = $focus->retrieve_entity_info($focus->id, 'Users');
-		$isFirstUser = Users_CRMSetup::isFirstUser($user);
-		if($isFirstUser) {
-			header('Location: index.php?module=Users&action=SystemSetup');
-		} else {
-			$arr = $_SESSION['lastpage'];
-			if(isset($_SESSION['lastpage'])) {
-				header("Location: $successURL".$arr);
-			} else {
-				header("Location: $successURL");
-			}
-		}
-	} else {
 		$arr = $_SESSION['lastpage'];
 		if(isset($_SESSION['lastpage'])) {
 			header("Location: $successURL".$arr);
 		} else {
 			header("Location: $successURL");
 		}
-	}
 } else {
 	$sql = 'select user_name, id, crypt_type from vtiger_users where user_name=?';
 	$result = $adb->pquery($sql, array($focus->column_fields["user_name"]));
