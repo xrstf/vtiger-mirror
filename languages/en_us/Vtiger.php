@@ -764,4 +764,11 @@ $jsLanguageStrings = array(
         //Promotion translations
         'JS_HIDE_PROMOTION' => 'Hide Promotion',
         'JS_SHOW_PROMOTION' => 'Show Promotion',
+    
+        //Inventory module Translations
+        'JS_PLEASE_ENABLE_PRODUCT_OR_SERVICE_MODULE'=>'Please Enable Product or Service Module',
+        'LBL_SYNC_BUTTON' => 'Syncronize',
+        'LBL_SYNCRONIZING' => 'Syncronizing',
+    
+        'JS_RECORDS_TRANSFERRED_SUCCESSFULLY' => 'Records ownership transferred successfully.',
 );

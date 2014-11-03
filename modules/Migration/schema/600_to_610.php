@@ -41,6 +41,86 @@ if(defined('INSTALLATION_MODE')) {
 
 global $adb;
 
+//Unlinking unwanted resources when migrating to 6.1.0
+$unWanted=array(
+ "modules/Import/resources/Import.js",
+ "modules/Webmails/Webmails.js",
+ "modules/Webforms/Webforms.js",
+ "modules/Vendors/Vendors.js",
+ "modules/Users/Users.js",
+ "modules/Tooltip/TooltipHeaderScript.js",
+ "modules/Tooltip/Tooltip.js",
+ "modules/Tooltip/TooltipSettings.js",
+ "modules/Settings/Settings.js",
+ "modules/Services/multifile.js",
+ "modules/Services/Services.js",
+ "modules/Services/Servicesslide.js",
+ "modules/ServiceContracts/ServiceContracts.js",
+ "modules/SalesOrder/SalesOrder.js",
+ "modules/Rss/Rss.js",
+ "modules/Reports/Reports.js",
+ "modules/RecycleBin/RecycleBin.js",
+ "modules/Quotes/Quotes.js",
+ "modules/PurchaseOrder/PurchaseOrder.js",
+ "modules/ProjectTask/ProjectTask.js",
+ "modules/ProjectMilestone/ProjectMilestone.js",
+ "modules/Project/Project.js",
+ "modules/Products/Productsslide.js",
+ "modules/Products/Products.js",
+ "modules/Products/multifile.js",
+ "modules/PriceBooks/PriceBooks.js",
+ "modules/Potentials/Potentials.js",
+ "modules/Portal/Portal.js",
+ "modules/Picklist/DependencyPicklist.js",
+ "modules/PBXManager/PBXManager.js",
+ "modules/MailManager/MailManager.js",
+ "modules/Leads/Leads.js",
+ "modules/Invoice/Invoice.js",
+ "modules/Integration/Integration.js",
+ "modules/Home/Homestuff.js",
+ "modules/HelpDesk/HelpDesk.js",
+ "modules/Faq/Faq.js",
+ "modules/Emails/Emails.js",
+ "modules/Emails/GmailBookmarklet.js",
+ "modules/Emails/GmailBookmarkletTrigger.js",
+ "modules/CustomerPortal/CustomerPortal.js",
+ "modules/CronTasks/CronTasks.js",
+ "modules/Contacts/Contacts.js",
+ "modules/ConfigurationEditor/ConfigEditor.js",
+ "modules/Documents/Documents.js",
+ "modules/CustomView/CustomView.js",
+ "modules/ModComments/ModComments.js",
+ "modules/ModComments/ModCommentsCommon.js",
+ "modules/ModTracker/ModTracker.js",
+ "modules/ModTracker/ModTrackerCommon.js",
+ "modules/com_vtiger_workflow/resources/functional.js",
+ "modules/com_vtiger_workflow/resources/parallelexecuter.js",
+ "modules/com_vtiger_workflow/resources/editworkflowscript.js",
+ "modules/com_vtiger_workflow/resources/createtodotaskscript.js",
+ "modules/com_vtiger_workflow/resources/fieldexpressionpopup.js",
+ "modules/com_vtiger_workflow/resources/workflowlistscript.js",
+ "modules/com_vtiger_workflow/resources/fieldvalidator.js",
+ "modules/com_vtiger_workflow/resources/updatefieldstaskscript.js",
+ "modules/com_vtiger_workflow/resources/jquery-1.2.6.js",
+ "modules/com_vtiger_workflow/resources/json2.js",
+ "modules/com_vtiger_workflow/resources/vtigerwebservices.js",
+ "modules/com_vtiger_workflow/resources/jquery.timepicker.js",
+ "modules/com_vtiger_workflow/resources/createentitytaskscript.js",
+ "modules/com_vtiger_workflow/resources/edittaskscript.js",
+ "modules/com_vtiger_workflow/resources/createeventtaskscript.js",
+ "modules/com_vtiger_workflow/resources/emailtaskscript.js",
+ "modules/FieldFormulas/editexpressionscript.js",              
+ "modules/FieldFormulas/jquery-1.2.6.js",
+ "modules/FieldFormulas/json2.js",
+ "modules/FieldFormulas/vtigerwebservices.js",
+ "modules/FieldFormulas/functional.js"
+);
+
+for($i=0;$i<=count($unWanted);$i++){
+    if(file_exists($unWanted[$i])){
+        unlink($unWanted[$i]);
+    }
+}
  
 $result = $adb->pquery("show columns from com_vtiger_workflows like ?", array('schtypeid'));
 if (!($adb->num_rows($result))) {
@@ -573,7 +653,7 @@ Migration_Index_View::ExecuteQuery($sql,array());
 //79 starts
 Migration_Index_View::ExecuteQuery("CREATE TABLE IF NOT EXISTS vtiger_shareduserinfo
 						(userid INT(19) NOT NULL default 0, shareduserid INT(19) NOT NULL default 0,
-						color VARCHAR(50), visible INT(19) default 1);");
+						color VARCHAR(50), visible INT(19) default 1);", array());
 
 Migration_Index_View::ExecuteQuery('ALTER TABLE vtiger_mailscanner_rules ADD assigned_to INT(10), ADD cc VARCHAR(255), ADD bcc VARCHAR(255)', array());
 $assignedToId = Users::getActiveAdminId();
@@ -1202,10 +1282,14 @@ if(!defined('INSTALLATION_MODE')) {
             for ($i = 0; $i < $rows; $i++) {
                 $row = $adb->query_result_rowdata($result, $i);
                 $crmid = $row['id'];
-                $values['crmid'] = $crmid;
-                $values['setype'] = $module;
+                
                 foreach ($row as $name => $value) {
-                    if ($name != 'name' && !empty($value) && $name != 'id' && !is_numeric($name)) {
+                    $values = array();
+                    $values['crmid'] = $crmid;
+                    $values['setype'] = $module;
+                    
+                    if ($name != 'name' && !empty($value) && $name != 'id' && !is_numeric($name)
+                        && $name != 'firstname' && $name != 'lastname') {
                         $values[$name] = $value;
                         $recordModel->receivePhoneLookUpRecord($name, $values, true);
                     }
@@ -1213,19 +1297,19 @@ if(!defined('INSTALLATION_MODE')) {
             }
         }
             //Data migrate from old columns to new columns in vtiger_pbxmanager 
-            $query = 'SELECT pbxmanagerid, callfrom, callto, timeofcall, status FROM vtiger_pbxmanager';
+            $query = 'SELECT * FROM vtiger_pbxmanager';
             $result = $adb->pquery($query, array());
             $params = array();
             $rowCount = $adb->num_rows($result);
             for ($i = 0; $i < $rowCount; $i++) {
-                $pbxmanagerid = $adb->query_result($result, 0, 'pbxmanagerid');
-                $callfrom = $adb->query_result($result, 0, 'callfrom');
-                $callto = $adb->query_result($result, 0, 'callto');
-                $timeofcall = $adb->query_result($result, 0, 'timeofcall');
-                $status = $adb->query_result($result, 0, 'status');
+                $pbxmanagerid = $adb->query_result($result, $i, 'pbxmanagerid');
+                $callfrom = $adb->query_result($result, $i, 'callfrom');
+                $callto = $adb->query_result($result, $i, 'callto');
+                $timeofcall = $adb->query_result($result, $i, 'timeofcall');
+                $status = $adb->query_result($result, $i, 'status');
                 $customer = PBXManager_Record_Model::lookUpRelatedWithNumber($callfrom);
                 $userIdQuery = $adb->pquery('SELECT userid FROM vtiger_asteriskextensions WHERE asterisk_extension = ?', array($callto));
-                $user = $adb->query_result($userIdQuery, 0, 'userid');
+                $user = $adb->query_result($userIdQuery, $i, 'userid');
                 if ($status == 'outgoing') {
                     $callstatus = 'outbound';
                 } else if ($status == 'incoming') {
@@ -1388,7 +1472,7 @@ Migration_Index_View::ExecuteQuery("UPDATE vtiger_field SET masseditable = ? WHE
 Vtiger_Utils::AddColumn('vtiger_organizationdetails', 'vatid', 'VARCHAR(100)');
 
 //Add Column trial for vtiger_tab table if not exists
-$result = $adb->pquery("SELECT trial FROM vtiger_tab",array());
+$result = $adb->pquery("SHOW COLUMNS FROM vtiger_tab LIKE ?", array('trial'));
 if (!($adb->num_rows($result))) {
     $adb->pquery("ALTER TABLE vtiger_tab ADD trial INT(1) NOT NULL DEFAULT 0",array());
 }
@@ -1464,3 +1548,7 @@ Migration_Index_View::ExecuteQuery("CREATE TABLE IF NOT EXISTS vtiger_reporttype
 						PRIMARY KEY (`reportid`),
 						CONSTRAINT `fk_1_vtiger_reporttype` FOREIGN KEY (`reportid`) REFERENCES `vtiger_report` (`reportid`) ON DELETE CASCADE)
                         ENGINE=InnoDB DEFAULT CHARSET=utf8;", array()); 
+
+//Configuration Editor fix
+$sql = "UPDATE vtiger_settings_field SET name = ? WHERE name = ?";
+Migration_Index_View::ExecuteQuery($sql,array('LBL_CONFIG_EDITOR', 'Configuration Editor'));
