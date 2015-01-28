@@ -172,7 +172,7 @@ function getAssociatedProducts($module,$focus,$seid='')
  		                                AND serviceid=?";
 			$params = array($seid);
 	}
-
+        
 	$result = $adb->pquery($query, $params);
 	$num_rows=$adb->num_rows($result);
 	for($i=1;$i<=$num_rows;$i++)
